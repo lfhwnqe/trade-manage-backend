@@ -12,11 +12,13 @@ const environment = app.node.tryGetContext('environment') || 'dev';
 const envConfig: Record<string, { account?: string; region: string }> = {
   dev: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION || 'ap-southeast-1',
+    region: 'ap-southeast-1',
+    // region: process.env.CDK_DEFAULT_REGION || 'ap-southeast-1',
   },
   prod: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION || 'ap-southeast-1',
+    region: 'ap-southeast-1',
+    // region: process.env.CDK_DEFAULT_REGION || 'ap-southeast-1',
   },
 };
 
