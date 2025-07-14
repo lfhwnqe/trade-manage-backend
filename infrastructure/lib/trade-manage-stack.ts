@@ -20,6 +20,10 @@ export class TradeManageStack extends cdk.Stack {
   public readonly usersTable: dynamodb.Table;
   public readonly tradesTable: dynamodb.Table;
   public readonly filesTable: dynamodb.Table;
+  // New tables for financial product management
+  public readonly customersTable: dynamodb.Table;
+  public readonly productsTable: dynamodb.Table;
+  public readonly customerProductTransactionsTable: dynamodb.Table;
   public readonly apiLambda: lambda.Function;
   public readonly api: apigateway.RestApi;
 
@@ -185,6 +189,132 @@ export class TradeManageStack extends cdk.Stack {
       },
     });
 
+    // Customers Table - 客户信息表
+    this.customersTable = new dynamodb.Table(this, 'CustomersTable', {
+      tableName: `trade-manage-${environment}-customers`,
+      partitionKey: {
+        name: 'customerId',
+        type: dynamodb.AttributeType.STRING,
+      },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      encryption: dynamodb.TableEncryption.AWS_MANAGED,
+      pointInTimeRecovery: environment === 'prod',
+      removalPolicy: environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+    });
+
+    // Add GSI for email lookup
+    this.customersTable.addGlobalSecondaryIndex({
+      indexName: 'EmailIndex',
+      partitionKey: {
+        name: 'email',
+        type: dynamodb.AttributeType.STRING,
+      },
+    });
+
+    // Add GSI for phone lookup
+    this.customersTable.addGlobalSecondaryIndex({
+      indexName: 'PhoneIndex',
+      partitionKey: {
+        name: 'phone',
+        type: dynamodb.AttributeType.STRING,
+      },
+    });
+
+    // Products Table - 产品信息表
+    this.productsTable = new dynamodb.Table(this, 'ProductsTable', {
+      tableName: `trade-manage-${environment}-products`,
+      partitionKey: {
+        name: 'productId',
+        type: dynamodb.AttributeType.STRING,
+      },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      encryption: dynamodb.TableEncryption.AWS_MANAGED,
+      pointInTimeRecovery: environment === 'prod',
+      removalPolicy: environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+    });
+
+    // Add GSI for product type lookup
+    this.productsTable.addGlobalSecondaryIndex({
+      indexName: 'ProductTypeIndex',
+      partitionKey: {
+        name: 'productType',
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: 'createdAt',
+        type: dynamodb.AttributeType.STRING,
+      },
+    });
+
+    // Add GSI for status lookup
+    this.productsTable.addGlobalSecondaryIndex({
+      indexName: 'StatusIndex',
+      partitionKey: {
+        name: 'status',
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: 'createdAt',
+        type: dynamodb.AttributeType.STRING,
+      },
+    });
+
+    // Customer Product Transactions Table - 客户产品购买记录表
+    this.customerProductTransactionsTable = new dynamodb.Table(this, 'CustomerProductTransactionsTable', {
+      tableName: `trade-manage-${environment}-customer-product-transactions`,
+      partitionKey: {
+        name: 'transactionId',
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: 'createdAt',
+        type: dynamodb.AttributeType.STRING,
+      },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      encryption: dynamodb.TableEncryption.AWS_MANAGED,
+      pointInTimeRecovery: environment === 'prod',
+      removalPolicy: environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+    });
+
+    // Add GSI for customer transactions lookup
+    this.customerProductTransactionsTable.addGlobalSecondaryIndex({
+      indexName: 'CustomerTransactionsIndex',
+      partitionKey: {
+        name: 'customerId',
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: 'createdAt',
+        type: dynamodb.AttributeType.STRING,
+      },
+    });
+
+    // Add GSI for product transactions lookup
+    this.customerProductTransactionsTable.addGlobalSecondaryIndex({
+      indexName: 'ProductTransactionsIndex',
+      partitionKey: {
+        name: 'productId',
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: 'createdAt',
+        type: dynamodb.AttributeType.STRING,
+      },
+    });
+
+    // Add GSI for transaction status lookup
+    this.customerProductTransactionsTable.addGlobalSecondaryIndex({
+      indexName: 'TransactionStatusIndex',
+      partitionKey: {
+        name: 'transactionStatus',
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: 'createdAt',
+        type: dynamodb.AttributeType.STRING,
+      },
+    });
+
     // Lambda Function for API
     this.apiLambda = new lambda.Function(this, 'ApiLambda', {
       functionName: `trade-manage-api-${environment}`,
@@ -223,6 +353,9 @@ export class TradeManageStack extends cdk.Stack {
         DB_TABLE_USERS: this.usersTable.tableName,
         DB_TABLE_TRADES: this.tradesTable.tableName,
         DB_TABLE_FILES: this.filesTable.tableName,
+        DB_TABLE_CUSTOMERS: this.customersTable.tableName,
+        DB_TABLE_PRODUCTS: this.productsTable.tableName,
+        DB_TABLE_CUSTOMER_PRODUCT_TRANSACTIONS: this.customerProductTransactionsTable.tableName,
 
         // API Configuration
         API_PREFIX: 'api/v1',
@@ -237,6 +370,9 @@ export class TradeManageStack extends cdk.Stack {
     this.usersTable.grantReadWriteData(this.apiLambda);
     this.tradesTable.grantReadWriteData(this.apiLambda);
     this.filesTable.grantReadWriteData(this.apiLambda);
+    this.customersTable.grantReadWriteData(this.apiLambda);
+    this.productsTable.grantReadWriteData(this.apiLambda);
+    this.customerProductTransactionsTable.grantReadWriteData(this.apiLambda);
 
     // Grant Cognito permissions
     this.apiLambda.addToRolePolicy(
@@ -321,6 +457,9 @@ export class TradeManageStack extends cdk.Stack {
         `DB_TABLE_USERS=${this.usersTable.tableName}`,
         `DB_TABLE_TRADES=${this.tradesTable.tableName}`,
         `DB_TABLE_FILES=${this.filesTable.tableName}`,
+        `DB_TABLE_CUSTOMERS=${this.customersTable.tableName}`,
+        `DB_TABLE_PRODUCTS=${this.productsTable.tableName}`,
+        `DB_TABLE_CUSTOMER_PRODUCT_TRANSACTIONS=${this.customerProductTransactionsTable.tableName}`,
         ``,
         `# API Configuration`,
         `API_PREFIX=api/v1`,
