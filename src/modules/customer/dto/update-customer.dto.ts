@@ -153,8 +153,9 @@ export class UpdateCustomerDto {
         type: { type: 'string', description: '沟通类型' },
         timestamp: { type: 'string', description: '沟通时间' },
         createdBy: { type: 'string', description: '记录者' },
-        outcome: { type: 'string', description: '沟通结果', required: false },
+        outcome: { type: 'string', description: '沟通结果' },
       },
+      required: ['id', 'content', 'type', 'timestamp', 'createdBy'],
     },
     required: false,
   })
