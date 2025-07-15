@@ -13,6 +13,7 @@ import { AuthModule } from './auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 import { TradeModule } from './modules/trade/trade.module';
 import { FileModule } from './modules/file/file.module';
+import { CustomerModule } from './modules/customer/customer.module';
 import { DatabaseModule } from './database/database.module';
 import { SharedModule } from './shared/shared.module';
 import { AuthMiddleware } from './auth/middleware/auth.middleware';
@@ -42,6 +43,7 @@ import configuration from './config/configuration';
     UserModule,
     TradeModule,
     FileModule,
+    CustomerModule,
   ],
   controllers: [AppController],
   providers: [AppService],
