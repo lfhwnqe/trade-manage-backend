@@ -10,6 +10,10 @@ import {
   UseGuards,
   HttpStatus,
   Logger,
+  Res,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -18,12 +22,16 @@ import {
   ApiBearerAuth,
   ApiParam,
   ApiQuery,
+  ApiConsumes,
 } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Response } from 'express';
 
 import { CustomerService } from './customer.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { QueryCustomerDto, CustomerListResponse } from './dto/query-customer.dto';
+import { ImportResultDto } from './dto/import-result.dto';
 import { Customer } from './entities/customer.entity';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles, Role } from '../../common/decorators/roles.decorator';
@@ -225,5 +233,92 @@ export class CustomerController {
   async remove(@Param('id') id: string): Promise<{ message: string }> {
     this.logger.log(`Deleting customer with ID: ${id}`);
     return await this.customerService.remove(id);
+  }
+
+  @Get('export')
+  @Roles(Role.ADMIN, Role.USER)
+  @ApiOperation({ summary: '导出客户数据为Excel文件' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Excel文件导出成功',
+    headers: {
+      'Content-Type': {
+        description: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      },
+      'Content-Disposition': {
+        description: 'attachment; filename="customers.xlsx"',
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: '导出失败',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: '未授权',
+  })
+  async exportCustomers(@Res() res: Response): Promise<void> {
+    this.logger.log('Exporting customers to Excel');
+
+    try {
+      // 获取所有客户数据
+      const customers = await this.customerService.getAllCustomersForExport();
+
+      // 生成Excel文件
+      const excelBuffer = await this.customerService.generateExcelBuffer(customers);
+
+      // 设置响应头
+      const filename = `customers_${new Date().toISOString().split('T')[0]}.xlsx`;
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', excelBuffer.length);
+
+      // 发送文件
+      res.send(excelBuffer);
+
+      this.logger.log(`Excel file exported successfully: ${filename}`);
+    } catch (error) {
+      this.logger.error(`Failed to export customers: ${error.message}`, error.stack);
+      res.status(HttpStatus.BAD_REQUEST).json({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: error.message || '导出客户数据失败',
+        error: 'Bad Request',
+      });
+    }
+  }
+
+  @Post('import')
+  @Roles(Role.ADMIN, Role.USER)
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: '从Excel文件导入客户数据' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '客户数据导入成功',
+    type: ImportResultDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: '导入失败或文件格式错误',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+    description: '不支持的文件格式',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: '未授权',
+  })
+  async importCustomers(
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<ImportResultDto> {
+    this.logger.log(`Importing customers from file: ${file?.originalname || 'unknown'}`);
+
+    if (!file) {
+      throw new BadRequestException('请选择要上传的Excel文件');
+    }
+
+    return await this.customerService.importCustomersFromExcel(file);
   }
 }

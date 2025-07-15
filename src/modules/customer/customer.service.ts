@@ -4,14 +4,17 @@ import {
   ConflictException,
   BadRequestException,
   Logger,
+  UnsupportedMediaTypeException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DynamodbService } from '../../database/dynamodb.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { QueryCustomerDto, CustomerListResponse } from './dto/query-customer.dto';
-import { Customer, CustomerStatus } from './entities/customer.entity';
+import { Customer, CustomerStatus, IdType, RiskLevel } from './entities/customer.entity';
+import { ImportResultDto, ImportErrorDetail } from './dto/import-result.dto';
 import { v4 as uuidv4 } from 'uuid';
+import * as Excel from 'exceljs';
 
 @Injectable()
 export class CustomerService {
@@ -359,6 +362,364 @@ export class CustomerService {
       }
       this.logger.error(`Error checking phone existence: ${error.message}`, error.stack);
       throw new BadRequestException('验证手机号失败');
+    }
+  }
+
+  /**
+   * 获取所有客户数据用于导出
+   */
+  async getAllCustomersForExport(): Promise<Customer[]> {
+    this.logger.log('Getting all customers for export');
+
+    try {
+      const allCustomers = await this.dynamodbService.scan(this.tableName);
+
+      // 按创建时间排序
+      allCustomers.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+      this.logger.log(`Retrieved ${allCustomers.length} customers for export`);
+      return allCustomers;
+    } catch (error) {
+      this.logger.error(`Failed to get customers for export: ${error.message}`, error.stack);
+      throw new BadRequestException('获取客户数据失败');
+    }
+  }
+
+  /**
+   * 生成Excel文件缓冲区
+   */
+  async generateExcelBuffer(customers: Customer[]): Promise<Buffer> {
+    this.logger.log(`Generating Excel file for ${customers.length} customers`);
+
+    try {
+      const workbook = new Excel.Workbook();
+      const worksheet = workbook.addWorksheet('客户数据');
+
+      // 设置列标题
+      const headers = [
+        { header: '客户ID', key: 'customerId', width: 20 },
+        { header: '邮箱', key: 'email', width: 25 },
+        { header: '手机号', key: 'phone', width: 18 },
+        { header: '姓', key: 'lastName', width: 10 },
+        { header: '名', key: 'firstName', width: 10 },
+        { header: '身份证件类型', key: 'idType', width: 15 },
+        { header: '身份证件号码', key: 'idNumber', width: 20 },
+        { header: '出生日期', key: 'dateOfBirth', width: 12 },
+        { header: '联系地址', key: 'address', width: 30 },
+        { header: '风险承受等级', key: 'riskLevel', width: 15 },
+        { header: '客户状态', key: 'status', width: 12 },
+        { header: '创建时间', key: 'createdAt', width: 20 },
+        { header: '更新时间', key: 'updatedAt', width: 20 },
+      ];
+
+      worksheet.columns = headers;
+
+      // 设置标题行样式
+      const headerRow = worksheet.getRow(1);
+      headerRow.font = { bold: true };
+      headerRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' },
+      };
+
+      // 添加数据行
+      customers.forEach((customer) => {
+        worksheet.addRow({
+          customerId: customer.customerId,
+          email: customer.email,
+          phone: customer.phone,
+          lastName: customer.lastName,
+          firstName: customer.firstName,
+          idType: customer.idType,
+          idNumber: customer.idNumber,
+          dateOfBirth: customer.dateOfBirth,
+          address: customer.address,
+          riskLevel: customer.riskLevel,
+          status: customer.status,
+          createdAt: new Date(customer.createdAt).toLocaleString('zh-CN'),
+          updatedAt: new Date(customer.updatedAt).toLocaleString('zh-CN'),
+        });
+      });
+
+      // 生成缓冲区
+      const buffer = await workbook.xlsx.writeBuffer();
+      this.logger.log('Excel file generated successfully');
+      return Buffer.from(buffer);
+    } catch (error) {
+      this.logger.error(`Failed to generate Excel file: ${error.message}`, error.stack);
+      throw new BadRequestException('生成Excel文件失败');
+    }
+  }
+
+  /**
+   * 从Excel文件导入客户数据
+   */
+  async importCustomersFromExcel(file: Express.Multer.File): Promise<ImportResultDto> {
+    if (!file) {
+      throw new BadRequestException('未提供文件');
+    }
+
+    this.logger.log(`Importing customers from Excel file: ${file.originalname}`);
+
+    // 检查文件类型
+    const validMimeTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+      'application/vnd.ms-excel', // .xls
+    ];
+
+    if (!validMimeTypes.includes(file.mimetype)) {
+      throw new UnsupportedMediaTypeException('文件格式不支持，请上传Excel文件(.xlsx或.xls)');
+    }
+
+    try {
+      // 解析Excel文件
+      const workbook = new Excel.Workbook();
+      await workbook.xlsx.load(file.buffer);
+
+      const worksheet = workbook.getWorksheet(1); // 获取第一个工作表
+      if (!worksheet) {
+        throw new BadRequestException('Excel文件中没有找到工作表');
+      }
+
+      // 验证Excel数据
+      const { validData, errors } = await this.validateExcelData(worksheet);
+
+      // 导入统计
+      let successCount = 0;
+      let failureCount = errors.length;
+      let skippedCount = 0;
+      const importErrors: ImportErrorDetail[] = [];
+
+      // 批量导入有效数据
+      for (const data of validData) {
+        try {
+          // 检查邮箱和手机号是否已存在
+          const emailExists = await this.isEmailExists(data.email);
+          const phoneExists = await this.isPhoneExists(data.phone);
+
+          if (emailExists || phoneExists) {
+            skippedCount++;
+            importErrors.push({
+              row: data.rowNumber,
+              error: emailExists ? '邮箱已存在' : '手机号已存在',
+              data,
+            });
+            continue;
+          }
+
+          // 创建新客户
+          await this.create({
+            email: data.email,
+            phone: data.phone,
+            firstName: data.firstName,
+            lastName: data.lastName,
+            idType: data.idType as IdType,
+            idNumber: data.idNumber,
+            dateOfBirth: data.dateOfBirth,
+            address: data.address,
+            riskLevel: data.riskLevel as RiskLevel,
+            status: data.status as CustomerStatus,
+          });
+
+          successCount++;
+        } catch (error) {
+          failureCount++;
+          importErrors.push({
+            row: data.rowNumber,
+            error: error.message || '导入失败',
+            data,
+          });
+        }
+      }
+
+      // 合并所有错误
+      const allErrors = [...errors, ...importErrors];
+
+      // 构建导入结果
+      const totalCount = successCount + failureCount + skippedCount;
+      const result: ImportResultDto = {
+        successCount,
+        failureCount,
+        skippedCount,
+        totalCount,
+        errors: allErrors,
+        message: `导入完成：成功 ${successCount} 条，失败 ${failureCount} 条，跳过 ${skippedCount} 条`,
+      };
+
+      this.logger.log(`Import completed: ${result.message}`);
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to import customers: ${error.message}`, error.stack);
+      throw new BadRequestException(`导入客户数据失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 验证Excel数据
+   */
+  private async validateExcelData(worksheet: Excel.Worksheet): Promise<{ validData: any[]; errors: ImportErrorDetail[] }> {
+    const validData: any[] = [];
+    const errors: ImportErrorDetail[] = [];
+
+    // 获取标题行
+    const headerRow = worksheet.getRow(1);
+    const headers: string[] = [];
+
+    headerRow.eachCell((cell, colNumber) => {
+      headers[colNumber - 1] = cell.value?.toString().trim() || '';
+    });
+
+    // 验证必要的列是否存在
+    const requiredColumns = ['邮箱', '手机号', '姓', '名', '身份证件类型', '身份证件号码', '出生日期', '联系地址', '风险承受等级'];
+    const missingColumns = requiredColumns.filter(col => !headers.includes(col));
+
+    if (missingColumns.length > 0) {
+      throw new BadRequestException(`Excel文件缺少必要的列: ${missingColumns.join(', ')}`);
+    }
+
+    // 处理每一行数据
+    worksheet.eachRow((row, rowNumber) => {
+      // 跳过标题行
+      if (rowNumber === 1) return;
+
+      const rowData: any = { rowNumber };
+      let hasError = false;
+
+      // 映射列名到字段名
+      const columnMapping: { [key: string]: string } = {
+        '邮箱': 'email',
+        '手机号': 'phone',
+        '姓': 'lastName',
+        '名': 'firstName',
+        '身份证件类型': 'idType',
+        '身份证件号码': 'idNumber',
+        '出生日期': 'dateOfBirth',
+        '联系地址': 'address',
+        '风险承受等级': 'riskLevel',
+        '客户状态': 'status',
+      };
+
+      // 获取每个单元格的值
+      headers.forEach((header, colIndex) => {
+        const fieldName = columnMapping[header];
+        if (fieldName) {
+          const cell = row.getCell(colIndex + 1);
+          let value = cell.value;
+
+          // 处理日期类型
+          if (fieldName === 'dateOfBirth' && value instanceof Date) {
+            value = value.toISOString().split('T')[0]; // 转为 YYYY-MM-DD 格式
+          } else if (value !== null && value !== undefined) {
+            value = value.toString().trim();
+          }
+
+          rowData[fieldName] = value;
+        }
+      });
+
+      // 验证必填字段
+      const rowErrors: string[] = [];
+
+      // 验证邮箱
+      if (!rowData.email) {
+        rowErrors.push('邮箱不能为空');
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rowData.email)) {
+        rowErrors.push('邮箱格式不正确');
+      }
+
+      // 验证手机号
+      if (!rowData.phone) {
+        rowErrors.push('手机号不能为空');
+      } else if (!/^(\+86\s?)?1[3-9]\d{9}$/.test(rowData.phone)) {
+        rowErrors.push('手机号格式不正确');
+      }
+
+      // 验证姓名
+      if (!rowData.firstName) rowErrors.push('名不能为空');
+      if (!rowData.lastName) rowErrors.push('姓不能为空');
+
+      // 验证身份证件类型
+      if (!rowData.idType) {
+        rowErrors.push('身份证件类型不能为空');
+      } else if (!Object.values(IdType).includes(rowData.idType)) {
+        rowErrors.push(`身份证件类型必须是以下之一: ${Object.values(IdType).join(', ')}`);
+      }
+
+      // 验证身份证件号码
+      if (!rowData.idNumber) rowErrors.push('身份证件号码不能为空');
+
+      // 验证出生日期
+      if (!rowData.dateOfBirth) {
+        rowErrors.push('出生日期不能为空');
+      } else if (!/^\d{4}-\d{2}-\d{2}$/.test(rowData.dateOfBirth)) {
+        rowErrors.push('出生日期格式不正确，应为YYYY-MM-DD');
+      }
+
+      // 验证地址
+      if (!rowData.address) rowErrors.push('联系地址不能为空');
+
+      // 验证风险等级
+      if (!rowData.riskLevel) {
+        rowErrors.push('风险承受等级不能为空');
+      } else if (!Object.values(RiskLevel).includes(rowData.riskLevel)) {
+        rowErrors.push(`风险承受等级必须是以下之一: ${Object.values(RiskLevel).join(', ')}`);
+      }
+
+      // 验证客户状态（可选）
+      if (rowData.status && !Object.values(CustomerStatus).includes(rowData.status)) {
+        rowErrors.push(`客户状态必须是以下之一: ${Object.values(CustomerStatus).join(', ')}`);
+      } else if (!rowData.status) {
+        // 设置默认状态
+        rowData.status = CustomerStatus.ACTIVE;
+      }
+
+      // 处理验证结果
+      if (rowErrors.length > 0) {
+        errors.push({
+          row: rowNumber,
+          error: rowErrors.join('; '),
+          data: rowData,
+        });
+      } else {
+        validData.push(rowData);
+      }
+    });
+
+    return { validData, errors };
+  }
+
+  /**
+   * 检查邮箱是否存在（不抛出异常）
+   */
+  private async isEmailExists(email: string): Promise<boolean> {
+    try {
+      const customers = await this.dynamodbService.query(
+        this.tableName,
+        'email = :email',
+        { ':email': email },
+        'EmailIndex',
+      );
+      return customers.length > 0;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * 检查手机号是否存在（不抛出异常）
+   */
+  private async isPhoneExists(phone: string): Promise<boolean> {
+    try {
+      const customers = await this.dynamodbService.query(
+        this.tableName,
+        'phone = :phone',
+        { ':phone': phone },
+        'PhoneIndex',
+      );
+      return customers.length > 0;
+    } catch (error) {
+      return false;
     }
   }
 }
