@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { CommunicationRecord } from '../interfaces/communication-record.interface';
 
 export enum CustomerStatus {
   ACTIVE = 'active',
@@ -99,4 +100,36 @@ export class Customer {
     example: '2024-01-01T00:00:00.000Z',
   })
   updatedAt: string;
+
+  @ApiProperty({
+    description: '备注信息',
+    example: '重要客户，需要特别关注',
+    required: false,
+  })
+  remarks?: string;
+
+  @ApiProperty({
+    description: '微信号',
+    example: 'wechat_user123',
+    required: false,
+  })
+  wechatId?: string;
+
+  @ApiProperty({
+    description: '沟通记录',
+    type: 'array',
+    items: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: '记录ID' },
+        content: { type: 'string', description: '沟通内容' },
+        type: { type: 'string', description: '沟通类型' },
+        timestamp: { type: 'string', description: '沟通时间' },
+        createdBy: { type: 'string', description: '记录者' },
+        outcome: { type: 'string', description: '沟通结果' },
+      },
+    },
+    required: false,
+  })
+  communicationRecords?: CommunicationRecord[];
 }

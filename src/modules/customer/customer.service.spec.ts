@@ -77,6 +77,18 @@ describe('CustomerService', () => {
       dateOfBirth: '1990-01-01',
       address: '北京市朝阳区某某街道123号',
       riskLevel: RiskLevel.MEDIUM,
+      remarks: '测试客户备注',
+      wechatId: 'test_wechat_123',
+      communicationRecords: [
+        {
+          id: 'comm_test_001',
+          content: '客户咨询产品信息',
+          type: '电话',
+          timestamp: '2024-01-01T10:00:00.000Z',
+          createdBy: '测试员工',
+          outcome: '客户表示感兴趣',
+        },
+      ],
     };
 
     it('should create a customer successfully', async () => {
@@ -178,6 +190,18 @@ describe('CustomerService', () => {
     const updateCustomerDto: UpdateCustomerDto = {
       firstName: '小红',
       riskLevel: RiskLevel.HIGH,
+      remarks: '更新的客户备注',
+      wechatId: 'updated_wechat_123',
+      communicationRecords: [
+        {
+          id: 'comm_test_002',
+          content: '客户确认购买产品',
+          type: '面谈',
+          timestamp: '2024-01-02T14:00:00.000Z',
+          createdBy: '销售经理',
+          outcome: '成功签约',
+        },
+      ],
     };
 
     it('should update a customer successfully', async () => {

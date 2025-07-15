@@ -8,8 +8,13 @@ import {
   MaxLength,
   Matches,
   IsDateString,
+  IsArray,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { IdType, RiskLevel, CustomerStatus } from '../entities/customer.entity';
+import { CommunicationRecord } from '../interfaces/communication-record.interface';
+import { CommunicationRecordDto } from './communication-record.dto';
 
 export class UpdateCustomerDto {
   @ApiProperty({
@@ -115,4 +120,47 @@ export class UpdateCustomerDto {
   @IsEnum(CustomerStatus, { message: '请选择有效的客户状态' })
   @IsOptional()
   status?: CustomerStatus;
+
+  @ApiProperty({
+    description: '备注信息',
+    example: '重要客户，需要特别关注',
+    required: false,
+  })
+  @IsString({ message: '备注信息必须是字符串' })
+  @IsOptional()
+  @MaxLength(1000, { message: '备注信息不能超过1000个字符' })
+  remarks?: string;
+
+  @ApiProperty({
+    description: '微信号',
+    example: 'wechat_user123',
+    required: false,
+  })
+  @IsString({ message: '微信号必须是字符串' })
+  @IsOptional()
+  @MinLength(1, { message: '微信号至少需要1个字符' })
+  @MaxLength(50, { message: '微信号不能超过50个字符' })
+  wechatId?: string;
+
+  @ApiProperty({
+    description: '沟通记录',
+    type: 'array',
+    items: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: '记录ID' },
+        content: { type: 'string', description: '沟通内容' },
+        type: { type: 'string', description: '沟通类型' },
+        timestamp: { type: 'string', description: '沟通时间' },
+        createdBy: { type: 'string', description: '记录者' },
+        outcome: { type: 'string', description: '沟通结果', required: false },
+      },
+    },
+    required: false,
+  })
+  @IsArray({ message: '沟通记录必须是数组格式' })
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => CommunicationRecordDto)
+  communicationRecords?: CommunicationRecord[];
 }
