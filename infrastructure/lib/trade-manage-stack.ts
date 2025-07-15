@@ -386,6 +386,8 @@ export class TradeManageStack extends cdk.Stack {
           'cognito-idp:AdminSetUserPassword',
           'cognito-idp:AdminUpdateUserAttributes',
           'cognito-idp:ListUsers',
+          'cognito-idp:SignUp',
+          'cognito-idp:ConfirmSignUp',
         ],
         resources: [this.userPool.userPoolArn],
       }),

@@ -56,6 +56,7 @@ export class AppModule implements NestModule {
         // 认证相关路由
         { path: 'auth/login', method: RequestMethod.POST },
         { path: 'auth/register', method: RequestMethod.POST },
+        { path: 'auth/verify-registration', method: RequestMethod.POST },
         // 应用基础路由
         { path: '', method: RequestMethod.GET },
         { path: 'health', method: RequestMethod.GET },

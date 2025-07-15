@@ -8,6 +8,8 @@ import {
   AdminUpdateUserAttributesCommand,
   AdminDeleteUserCommand,
   ListUsersCommand,
+  ConfirmSignUpCommand,
+  SignUpCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 
 @Injectable()
@@ -102,6 +104,40 @@ export class CognitoService {
       UserPoolId: this.userPoolId,
       Limit: limit,
       PaginationToken: paginationToken,
+    });
+
+    return await this.cognitoClient.send(command);
+  }
+
+  async confirmSignUp(username: string, confirmationCode: string): Promise<any> {
+    const command = new ConfirmSignUpCommand({
+      ClientId: this.configService.get<string>('cognito.clientId'),
+      Username: username,
+      ConfirmationCode: confirmationCode,
+    });
+
+    return await this.cognitoClient.send(command);
+  }
+
+  async signUp(username: string, password: string, email: string, firstName: string, lastName: string): Promise<any> {
+    const command = new SignUpCommand({
+      ClientId: this.configService.get<string>('cognito.clientId'),
+      Username: username,
+      Password: password,
+      UserAttributes: [
+        {
+          Name: 'email',
+          Value: email,
+        },
+        {
+          Name: 'given_name',
+          Value: firstName,
+        },
+        {
+          Name: 'family_name',
+          Value: lastName,
+        },
+      ],
     });
 
     return await this.cognitoClient.send(command);
