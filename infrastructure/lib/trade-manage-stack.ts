@@ -318,7 +318,7 @@ export class TradeManageStack extends cdk.Stack {
     // Lambda Function for API
     this.apiLambda = new lambda.Function(this, 'ApiLambda', {
       functionName: `trade-manage-api-${environment}`,
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'lambda.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../lambda-package')),
       timeout: cdk.Duration.seconds(30),
