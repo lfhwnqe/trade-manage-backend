@@ -133,6 +133,48 @@ export class AuthService {
     }
   }
 
+  async registerCustomerAccount(
+    username: string,
+    password: string,
+    email: string,
+    firstName: string,
+    lastName: string,
+    customerId: string,
+  ) {
+    this.logger.log(`Creating login for customer: ${username}`);
+
+    const existingUser = await this.dynamodbService.get('users', { userId: username });
+    if (existingUser) {
+      throw new ConflictException('User already exists');
+    }
+
+    try {
+      await this.cognitoService.createUser(username, email, password);
+      await this.cognitoService.setUserPassword(username, password, true);
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const now = new Date().toISOString();
+
+      await this.dynamodbService.put('users', {
+        userId: username,
+        username,
+        email,
+        password: hashedPassword,
+        firstName,
+        lastName,
+        role: 'customer',
+        customerId,
+        emailVerified: true,
+        status: 'active',
+        createdAt: now,
+        updatedAt: now,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to create customer account: ${username}`, error);
+      throw new BadRequestException('创建客户账号失败');
+    }
+  }
+
   async getProfile(userId: string) {
     const user = await this.dynamodbService.get('users', { userId });
 
