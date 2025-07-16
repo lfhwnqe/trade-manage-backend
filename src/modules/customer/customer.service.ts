@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DynamodbService } from '../../database/dynamodb.service';
+import { AuthService } from '../../auth/auth.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { QueryCustomerDto, CustomerListResponse } from './dto/query-customer.dto';
@@ -24,6 +25,7 @@ export class CustomerService {
   constructor(
     private readonly dynamodbService: DynamodbService,
     private readonly configService: ConfigService,
+    private readonly authService: AuthService,
   ) {
     this.tableName = this.configService.get<string>('database.tables.customers');
   }
@@ -34,18 +36,17 @@ export class CustomerService {
   async create(createCustomerDto: CreateCustomerDto): Promise<Customer> {
     this.logger.log(`Creating new customer with email: ${createCustomerDto.email}`);
 
-    // 检查邮箱是否已存在
     await this.checkEmailExists(createCustomerDto.email);
-
-    // 检查手机号是否已存在
     await this.checkPhoneExists(createCustomerDto.phone);
 
     const now = new Date().toISOString();
     const customerId = `cust_${uuidv4()}`;
 
+    const { username, password, ...rest } = createCustomerDto;
+
     const customer: Customer = {
       customerId,
-      ...createCustomerDto,
+      ...(rest as any),
       status: createCustomerDto.status || CustomerStatus.ACTIVE,
       createdAt: now,
       updatedAt: now,
@@ -53,6 +54,16 @@ export class CustomerService {
 
     try {
       await this.dynamodbService.put(this.tableName, customer);
+
+      await this.authService.registerCustomerAccount(
+        username,
+        password,
+        customer.email,
+        customer.firstName,
+        customer.lastName,
+        customerId,
+      );
+
       this.logger.log(`Customer created successfully with ID: ${customerId}`);
       return customer;
     } catch (error) {
