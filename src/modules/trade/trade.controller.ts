@@ -51,7 +51,7 @@ export class TradeController {
   @ApiResponse({ status: 200, description: 'Trades retrieved successfully' })
   findAll(@CurrentUser() user: any, @Query('userId') userId?: string) {
     // Regular users can only see their own trades
-    if (user.role !== 'admin') {
+    if (user.role !== 'super_admin') {
       return this.tradeService.findAll(user.userId);
     }
 
@@ -77,7 +77,7 @@ export class TradeController {
   @ApiResponse({ status: 403, description: 'Access denied' })
   findOne(@Param('id') id: string, @CurrentUser() user: any) {
     // Regular users can only access their own trades
-    const userId = user.role === 'admin' ? undefined : user.userId;
+    const userId = user.role === 'super_admin' ? undefined : user.userId;
     return this.tradeService.findOne(id, userId);
   }
 

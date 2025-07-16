@@ -94,7 +94,7 @@ export class FileController {
   @ApiResponse({ status: 200, description: 'Files retrieved successfully' })
   findAll(@CurrentUser() user: any, @Query('userId') userId?: string) {
     // Regular users can only see their own files
-    if (user.role !== 'admin') {
+    if (user.role !== 'super_admin') {
       return this.fileService.findAll(user.userId);
     }
 
@@ -120,7 +120,7 @@ export class FileController {
   @ApiResponse({ status: 403, description: 'Access denied' })
   findOne(@Param('id') id: string, @CurrentUser() user: any) {
     // Regular users can only access their own files
-    const userId = user.role === 'admin' ? undefined : user.userId;
+    const userId = user.role === 'super_admin' ? undefined : user.userId;
     return this.fileService.findOne(id, userId);
   }
 
@@ -144,7 +144,7 @@ export class FileController {
     @Query('expiresIn') expiresIn?: number,
   ) {
     // Regular users can only access their own files
-    const userId = user.role === 'admin' ? undefined : user.userId;
+    const userId = user.role === 'super_admin' ? undefined : user.userId;
     return this.fileService.getFileUrl(id, userId, expiresIn);
   }
 

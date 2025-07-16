@@ -46,7 +46,7 @@ export class CustomerController {
   constructor(private readonly customerService: CustomerService) {}
 
   @Post()
-  @Roles(Role.ADMIN, Role.USER)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.USER)
   @ApiOperation({ summary: '创建新客户' })
   @ApiResponse({
     status: HttpStatus.CREATED,
@@ -71,7 +71,7 @@ export class CustomerController {
   }
 
   @Get()
-  @Roles(Role.ADMIN, Role.USER)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.USER)
   @ApiOperation({ summary: '获取客户列表' })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -92,7 +92,7 @@ export class CustomerController {
   }
 
   @Get('search/email/:email')
-  @Roles(Role.ADMIN, Role.USER)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.USER)
   @ApiOperation({ summary: '根据邮箱查找客户' })
   @ApiParam({
     name: 'email',
@@ -118,7 +118,7 @@ export class CustomerController {
   }
 
   @Get('search/phone/:phone')
-  @Roles(Role.ADMIN, Role.USER)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.USER)
   @ApiOperation({ summary: '根据手机号查找客户' })
   @ApiParam({
     name: 'phone',
@@ -144,7 +144,7 @@ export class CustomerController {
   }
 
   @Get(':id')
-  @Roles(Role.ADMIN, Role.USER)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.USER)
   @ApiOperation({ summary: '根据ID获取客户详情' })
   @ApiParam({
     name: 'id',
@@ -170,7 +170,7 @@ export class CustomerController {
   }
 
   @Put(':id')
-  @Roles(Role.ADMIN, Role.USER)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.USER)
   @ApiOperation({ summary: '更新客户信息' })
   @ApiParam({
     name: 'id',
@@ -207,7 +207,7 @@ export class CustomerController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: '删除客户' })
   @ApiParam({
     name: 'id',
@@ -236,7 +236,7 @@ export class CustomerController {
   }
 
   @Get('export')
-  @Roles(Role.ADMIN, Role.USER)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.USER)
   @ApiOperation({ summary: '导出客户数据为Excel文件' })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -289,7 +289,7 @@ export class CustomerController {
   }
 
   @Post('import')
-  @Roles(Role.ADMIN, Role.USER)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.USER)
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: '从Excel文件导入客户数据' })
