@@ -3,6 +3,7 @@ import {
   Get,
   Body,
   Patch,
+  Post,
   Param,
   Delete,
   UseGuards,
@@ -18,9 +19,11 @@ import {
 import { UserService } from './user.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { InitSuperAdminDto } from './dto/init-super-admin.dto';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles, Role } from '../../common/decorators/roles.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 
 @ApiTags('Users')
 @Controller('users')
@@ -75,6 +78,18 @@ export class UserController {
     @Body() dto: ChangePasswordDto,
   ) {
     return this.userService.changePassword(userId, dto);
+  }
+
+  @Public()
+  @Post('init-super-admin')
+  @ApiOperation({ summary: 'Initialize super admin with a registered user' })
+  @ApiResponse({ status: 201, description: 'User promoted to super admin' })
+  @ApiResponse({
+    status: 400,
+    description: 'Super admin already exists or email not verified',
+  })
+  initSuperAdmin(@Body() dto: InitSuperAdminDto) {
+    return this.userService.initSuperAdmin(dto.username);
   }
 
   @Patch('make-super-admin')
