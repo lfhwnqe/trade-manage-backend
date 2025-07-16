@@ -170,7 +170,8 @@ export class TransactionService {
 
     transactions.forEach((t) => sheet.addRow(t));
 
-    return workbook.xlsx.writeBuffer();
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(buffer);
   }
 
   async importFromExcel(file: Express.Multer.File): Promise<ImportResultDto> {
