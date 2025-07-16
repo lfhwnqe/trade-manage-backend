@@ -42,21 +42,21 @@ export class TransactionController {
   constructor(private readonly service: TransactionService) {}
 
   @Post()
-  @Roles(Role.ADMIN, Role.USER)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.USER)
   @ApiOperation({ summary: '创建交易记录' })
   create(@Body() dto: CreateTransactionDto): Promise<Transaction> {
     return this.service.create(dto);
   }
 
   @Get()
-  @Roles(Role.ADMIN, Role.USER)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.USER)
   @ApiOperation({ summary: '获取交易记录列表' })
   findAll(@Query() query: QueryTransactionDto): Promise<TransactionListResponse> {
     return this.service.findAll(query);
   }
 
   @Get(':id')
-  @Roles(Role.ADMIN, Role.USER)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.USER)
   @ApiOperation({ summary: '获取交易记录详情' })
   @ApiParam({ name: 'id', description: '交易ID' })
   findOne(@Param('id') id: string): Promise<Transaction> {
@@ -64,7 +64,7 @@ export class TransactionController {
   }
 
   @Put(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: '更新交易记录' })
   @ApiParam({ name: 'id', description: '交易ID' })
   update(@Param('id') id: string, @Body() dto: UpdateTransactionDto): Promise<Transaction> {
@@ -72,7 +72,7 @@ export class TransactionController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: '删除交易记录' })
   @ApiParam({ name: 'id', description: '交易ID' })
   remove(@Param('id') id: string) {
@@ -80,7 +80,7 @@ export class TransactionController {
   }
 
   @Get('export')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: '导出交易记录为Excel' })
   async export(@Res() res: Response) {
     const items = await this.service.getAllForExport();
@@ -96,7 +96,7 @@ export class TransactionController {
   }
 
   @Post('import')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: '从Excel导入交易记录' })

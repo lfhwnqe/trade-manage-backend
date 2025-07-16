@@ -29,7 +29,7 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get()
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Get all users (Admin only)' })
   @ApiResponse({ status: 200, description: 'Users retrieved successfully' })
@@ -77,8 +77,28 @@ export class UserController {
     return this.userService.changePassword(userId, dto);
   }
 
+  @Patch('make-super-admin')
+  @ApiOperation({ summary: 'Promote current user to super admin' })
+  @ApiResponse({ status: 200, description: 'User promoted to super admin' })
+  @ApiResponse({ status: 400, description: 'Super admin already exists or email not verified' })
+  makeSuperAdmin(@CurrentUser('userId') userId: string) {
+    return this.userService.makeSuperAdmin(userId);
+  }
+
+  @Patch(':id/make-admin')
+  @Roles(Role.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Set user as admin (Super admin only)' })
+  @ApiParam({ name: 'id', description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'User promoted to admin' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  setAdmin(@Param('id') id: string) {
+    return this.userService.setAdmin(id);
+  }
+
   @Patch(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Update user by ID (Admin only)' })
   @ApiParam({ name: 'id', description: 'User ID' })
@@ -90,7 +110,7 @@ export class UserController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Delete user by ID (Admin only)' })
   @ApiParam({ name: 'id', description: 'User ID' })

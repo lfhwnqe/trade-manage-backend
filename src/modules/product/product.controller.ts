@@ -42,14 +42,14 @@ export class ProductController {
   constructor(private readonly productService: ProductService) {}
 
   @Post()
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: '创建产品' })
   create(@Body() dto: CreateProductDto): Promise<Product> {
     return this.productService.create(dto);
   }
 
   @Get()
-  @Roles(Role.ADMIN, Role.USER)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.USER)
   @ApiOperation({ summary: '获取产品列表' })
   @ApiQuery({ name: 'page', required: false })
   findAll(@Query() query: QueryProductDto): Promise<ProductListResponse> {
@@ -57,7 +57,7 @@ export class ProductController {
   }
 
   @Get(':id')
-  @Roles(Role.ADMIN, Role.USER)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.USER)
   @ApiOperation({ summary: '获取产品详情' })
   @ApiParam({ name: 'id', description: '产品ID' })
   findOne(@Param('id') id: string): Promise<Product> {
@@ -65,7 +65,7 @@ export class ProductController {
   }
 
   @Put(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: '更新产品' })
   @ApiParam({ name: 'id', description: '产品ID' })
   update(@Param('id') id: string, @Body() dto: UpdateProductDto): Promise<Product> {
@@ -73,7 +73,7 @@ export class ProductController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: '删除产品' })
   @ApiParam({ name: 'id', description: '产品ID' })
   remove(@Param('id') id: string) {
@@ -81,7 +81,7 @@ export class ProductController {
   }
 
   @Get('export')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: '导出产品数据为Excel' })
   async export(@Res() res: Response) {
     const products = await this.productService.getAllForExport();
@@ -97,7 +97,7 @@ export class ProductController {
   }
 
   @Post('import')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: '从Excel导入产品数据' })

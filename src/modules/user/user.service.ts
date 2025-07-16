@@ -125,4 +125,56 @@ export class UserService {
     await this.dynamodbService.delete('users', { userId });
     return { message: 'User deleted successfully' };
   }
+
+  async makeSuperAdmin(userId: string) {
+    // Check if another super admin already exists
+    const allUsers = await this.dynamodbService.scan('users');
+    const existing = allUsers.find((u) => u.role === 'super_admin');
+
+    if (existing && existing.userId !== userId) {
+      throw new BadRequestException('Super admin already exists');
+    }
+
+    const user = await this.dynamodbService.get('users', { userId });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    if (!user.emailVerified) {
+      throw new BadRequestException('Email not verified');
+    }
+
+    await this.dynamodbService.update(
+      'users',
+      { userId },
+      'SET #role = :role, #updatedAt = :updatedAt',
+      {
+        ':role': 'super_admin',
+        ':updatedAt': new Date().toISOString(),
+      },
+      { '#role': 'role', '#updatedAt': 'updatedAt' },
+    );
+
+    return { message: 'User promoted to super admin' };
+  }
+
+  async setAdmin(targetUserId: string) {
+    const user = await this.dynamodbService.get('users', { userId: targetUserId });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    await this.dynamodbService.update(
+      'users',
+      { userId: targetUserId },
+      'SET #role = :role, #updatedAt = :updatedAt',
+      {
+        ':role': 'admin',
+        ':updatedAt': new Date().toISOString(),
+      },
+      { '#role': 'role', '#updatedAt': 'updatedAt' },
+    );
+
+    return { message: 'User promoted to admin' };
+  }
 }
