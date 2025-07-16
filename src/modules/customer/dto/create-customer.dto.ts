@@ -26,7 +26,11 @@ export class CreateCustomerDto {
   @IsNotEmpty({ message: '邮箱地址不能为空' })
   email: string;
 
-  @ApiProperty({ description: '登录账号', example: 'customer01', required: false })
+  @ApiProperty({
+    description: '登录账号',
+    example: 'customer01',
+    required: false,
+  })
   @IsString({ message: '登录账号必须是字符串' })
   @IsOptional()
   @MinLength(3, { message: '登录账号至少需要3个字符' })
