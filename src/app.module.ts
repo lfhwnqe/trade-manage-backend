@@ -14,6 +14,7 @@ import { UserModule } from './modules/user/user.module';
 import { TradeModule } from './modules/trade/trade.module';
 import { FileModule } from './modules/file/file.module';
 import { CustomerModule } from './modules/customer/customer.module';
+import { ProductModule } from "./modules/product/product.module";
 import { DatabaseModule } from './database/database.module';
 import { SharedModule } from './shared/shared.module';
 import { AuthMiddleware } from './auth/middleware/auth.middleware';
@@ -44,6 +45,7 @@ import configuration from './config/configuration';
     TradeModule,
     FileModule,
     CustomerModule,
+    ProductModule,
   ],
   controllers: [AppController],
   providers: [AppService],
