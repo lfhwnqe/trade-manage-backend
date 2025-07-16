@@ -156,7 +156,8 @@ export class ProductService {
 
     products.forEach((p) => sheet.addRow(p));
 
-    return workbook.xlsx.writeBuffer();
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(buffer);
   }
 
   async importFromExcel(file: Express.Multer.File): Promise<ImportResultDto> {

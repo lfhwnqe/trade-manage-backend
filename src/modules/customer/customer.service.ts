@@ -67,14 +67,16 @@ export class CustomerService {
     try {
       await this.dynamodbService.put(this.tableName, customer);
 
-      await this.authService.registerCustomerAccount(
-        username,
-        password,
-        customer.email,
-        customer.firstName,
-        customer.lastName,
-        customerId,
-      );
+      if (username && password) {
+        await this.authService.registerCustomerAccount(
+          username,
+          password,
+          customer.email,
+          customer.firstName,
+          customer.lastName,
+          customerId,
+        );
+      }
 
       this.logger.log(`Customer created successfully with ID: ${customerId}`);
       return customer;
