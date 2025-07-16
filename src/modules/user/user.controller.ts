@@ -72,7 +72,10 @@ export class UserController {
   @Patch('me/password')
   @ApiOperation({ summary: 'Change current user password' })
   @ApiResponse({ status: 200, description: 'Password updated successfully' })
-  @ApiResponse({ status: 400, description: 'Invalid current password or email not verified' })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid current password or email not verified',
+  })
   changePassword(
     @CurrentUser('userId') userId: string,
     @Body() dto: ChangePasswordDto,
@@ -95,7 +98,10 @@ export class UserController {
   @Patch('make-super-admin')
   @ApiOperation({ summary: 'Promote current user to super admin' })
   @ApiResponse({ status: 200, description: 'User promoted to super admin' })
-  @ApiResponse({ status: 400, description: 'Super admin already exists or email not verified' })
+  @ApiResponse({
+    status: 400,
+    description: 'Super admin already exists or email not verified',
+  })
   makeSuperAdmin(@CurrentUser('userId') userId: string) {
     return this.userService.makeSuperAdmin(userId);
   }

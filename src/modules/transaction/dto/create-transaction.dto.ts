@@ -1,6 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsEnum, IsNumber, IsOptional, Min } from 'class-validator';
-import { TransactionType, TransactionStatus, PaymentMethod } from '../entities/transaction.entity';
+import {
+  TransactionType,
+  TransactionStatus,
+  PaymentMethod,
+} from '../entities/transaction.entity';
 
 export class CreateTransactionDto {
   @ApiProperty({ description: '客户ID' })
@@ -31,7 +35,11 @@ export class CreateTransactionDto {
   @IsOptional()
   totalAmount?: number;
 
-  @ApiProperty({ description: '交易状态', enum: TransactionStatus, required: false })
+  @ApiProperty({
+    description: '交易状态',
+    enum: TransactionStatus,
+    required: false,
+  })
   @IsEnum(TransactionStatus)
   @IsOptional()
   transactionStatus?: TransactionStatus = TransactionStatus.PENDING;

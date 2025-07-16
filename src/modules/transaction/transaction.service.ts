@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException, Logger, UnsupportedMediaTypeException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+  UnsupportedMediaTypeException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
 import * as Excel from 'exceljs';
@@ -6,8 +12,16 @@ import * as Excel from 'exceljs';
 import { DynamodbService } from '../../database/dynamodb.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
-import { QueryTransactionDto, TransactionListResponse } from './dto/query-transaction.dto';
-import { Transaction, TransactionStatus, TransactionType, PaymentMethod } from './entities/transaction.entity';
+import {
+  QueryTransactionDto,
+  TransactionListResponse,
+} from './dto/query-transaction.dto';
+import {
+  Transaction,
+  TransactionStatus,
+  TransactionType,
+  PaymentMethod,
+} from './entities/transaction.entity';
 import { ImportResultDto, ImportErrorDetail } from './dto/import-result.dto';
 
 @Injectable()
@@ -19,7 +33,9 @@ export class TransactionService {
     private readonly dynamodbService: DynamodbService,
     private readonly configService: ConfigService,
   ) {
-    this.tableName = this.configService.get<string>('database.tables.customerProductTransactions');
+    this.tableName = this.configService.get<string>(
+      'database.tables.customerProductTransactions',
+    );
   }
 
   async create(dto: CreateTransactionDto): Promise<Transaction> {
@@ -50,13 +66,16 @@ export class TransactionService {
       filtered = filtered.filter((i) => i.productId === query.productId);
     }
     if (query.transactionStatus) {
-      filtered = filtered.filter((i) => i.transactionStatus === query.transactionStatus);
+      filtered = filtered.filter(
+        (i) => i.transactionStatus === query.transactionStatus,
+      );
     }
 
     filtered.sort((a, b) => {
       const aVal = a[query.sortBy] || '';
       const bVal = b[query.sortBy] || '';
-      if (query.sortOrder === 'asc') return String(aVal).localeCompare(String(bVal));
+      if (query.sortOrder === 'asc')
+        return String(aVal).localeCompare(String(bVal));
       return String(bVal).localeCompare(String(aVal));
     });
 
@@ -70,12 +89,17 @@ export class TransactionService {
   }
 
   async findOne(transactionId: string): Promise<Transaction> {
-    const item = await this.dynamodbService.get(this.tableName, { transactionId });
+    const item = await this.dynamodbService.get(this.tableName, {
+      transactionId,
+    });
     if (!item) throw new NotFoundException('记录不存在');
     return item;
   }
 
-  async update(transactionId: string, dto: UpdateTransactionDto): Promise<Transaction> {
+  async update(
+    transactionId: string,
+    dto: UpdateTransactionDto,
+  ): Promise<Transaction> {
     await this.findOne(transactionId);
 
     if (dto.transactionId && dto.transactionId !== transactionId) {
@@ -84,7 +108,9 @@ export class TransactionService {
 
     let updateExpression = 'SET #updatedAt = :updatedAt';
     const names: Record<string, string> = { '#updatedAt': 'updatedAt' };
-    const values: Record<string, any> = { ':updatedAt': new Date().toISOString() };
+    const values: Record<string, any> = {
+      ':updatedAt': new Date().toISOString(),
+    };
 
     Object.keys(dto).forEach((key, i) => {
       const attr = `#attr${i}`;
@@ -113,7 +139,10 @@ export class TransactionService {
 
   async getAllForExport(): Promise<Transaction[]> {
     const items = await this.dynamodbService.scan(this.tableName);
-    items.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    items.sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
     return items;
   }
 
@@ -164,9 +193,14 @@ export class TransactionService {
         unitPrice: Number(row.getCell(5).value),
         totalAmount: Number(row.getCell(6).value),
         paymentMethod: row.getCell(7).text.trim() as PaymentMethod,
-        transactionStatus: (row.getCell(8).text.trim() as TransactionStatus) || TransactionStatus.PENDING,
+        transactionStatus:
+          (row.getCell(8).text.trim() as TransactionStatus) ||
+          TransactionStatus.PENDING,
         expectedMaturityDate: row.getCell(9).text.trim(),
-        actualReturnRate: row.getCell(10).value !== null ? Number(row.getCell(10).value) : undefined,
+        actualReturnRate:
+          row.getCell(10).value !== null
+            ? Number(row.getCell(10).value)
+            : undefined,
         notes: row.getCell(11).text.trim(),
       } as any;
       rows.push({ data, rowNumber });

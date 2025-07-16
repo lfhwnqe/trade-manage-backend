@@ -1,4 +1,10 @@
-import { Injectable, UnauthorizedException, BadRequestException, ConflictException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+  ConflictException,
+  Logger,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
@@ -65,7 +71,9 @@ export class AuthService {
   async register(registerDto: RegisterDto) {
     const { username, email, password, firstName, lastName } = registerDto;
 
-    this.logger.log(`Attempting to register user: ${username} with email: ${email}`);
+    this.logger.log(
+      `Attempting to register user: ${username} with email: ${email}`,
+    );
 
     // Check if user already exists in DynamoDB
     const existingUser = await this.dynamodbService.get('users', {
@@ -77,9 +85,17 @@ export class AuthService {
 
     try {
       // Create user in Cognito first (this will send verification email)
-      const cognitoResult = await this.cognitoService.signUp(username, password, email, firstName, lastName);
+      const cognitoResult = await this.cognitoService.signUp(
+        username,
+        password,
+        email,
+        firstName,
+        lastName,
+      );
 
-      this.logger.log(`Successfully created user in Cognito: ${username}, UserSub: ${cognitoResult.UserSub}`);
+      this.logger.log(
+        `Successfully created user in Cognito: ${username}, UserSub: ${cognitoResult.UserSub}`,
+      );
 
       // Hash password for DynamoDB storage
       const hashedPassword = await bcrypt.hash(password, 10);
@@ -107,10 +123,10 @@ export class AuthService {
       const { password: _, ...userResponse } = newUser;
       return {
         ...userResponse,
-        message: 'Registration successful. Please check your email for verification code.',
+        message:
+          'Registration successful. Please check your email for verification code.',
         requiresVerification: true,
       };
-
     } catch (error) {
       this.logger.error(`Failed to register user: ${username}`, error);
 
@@ -128,7 +144,10 @@ export class AuthService {
       }
 
       // 通用错误处理
-      this.logger.error(`Unexpected error during registration for user: ${username}`, error);
+      this.logger.error(
+        `Unexpected error during registration for user: ${username}`,
+        error,
+      );
       throw new BadRequestException('Registration failed. Please try again');
     }
   }
@@ -143,7 +162,9 @@ export class AuthService {
   ) {
     this.logger.log(`Creating login for customer: ${username}`);
 
-    const existingUser = await this.dynamodbService.get('users', { userId: username });
+    const existingUser = await this.dynamodbService.get('users', {
+      userId: username,
+    });
     if (existingUser) {
       throw new ConflictException('User already exists');
     }
@@ -170,7 +191,10 @@ export class AuthService {
         updatedAt: now,
       });
     } catch (error) {
-      this.logger.error(`Failed to create customer account: ${username}`, error);
+      this.logger.error(
+        `Failed to create customer account: ${username}`,
+        error,
+      );
       throw new BadRequestException('创建客户账号失败');
     }
   }
@@ -195,11 +219,15 @@ export class AuthService {
       // 调用 Cognito 确认用户注册
       await this.cognitoService.confirmSignUp(username, verificationCode);
 
-      this.logger.log(`Successfully verified registration for user: ${username}`);
+      this.logger.log(
+        `Successfully verified registration for user: ${username}`,
+      );
 
       // 更新 DynamoDB 中的用户状态为已验证
       try {
-        const user = await this.dynamodbService.get('users', { userId: username });
+        const user = await this.dynamodbService.get('users', {
+          userId: username,
+        });
 
         if (user) {
           await this.dynamodbService.put('users', {
@@ -209,10 +237,15 @@ export class AuthService {
             updatedAt: new Date().toISOString(),
           });
 
-          this.logger.log(`Updated user status in DynamoDB for user: ${username}`);
+          this.logger.log(
+            `Updated user status in DynamoDB for user: ${username}`,
+          );
         }
       } catch (dbError) {
-        this.logger.warn(`Failed to update user status in DynamoDB for user: ${username}`, dbError);
+        this.logger.warn(
+          `Failed to update user status in DynamoDB for user: ${username}`,
+          dbError,
+        );
         // 不抛出错误，因为 Cognito 验证已成功
       }
 
@@ -220,9 +253,11 @@ export class AuthService {
         message: 'Email verification successful',
         verified: true,
       };
-
     } catch (error) {
-      this.logger.error(`Failed to verify registration for user: ${username}`, error);
+      this.logger.error(
+        `Failed to verify registration for user: ${username}`,
+        error,
+      );
 
       // 处理不同类型的 Cognito 错误
       if (error.name === 'CodeMismatchException') {
@@ -242,7 +277,9 @@ export class AuthService {
       }
 
       if (error.name === 'LimitExceededException') {
-        throw new BadRequestException('Too many attempts. Please try again later');
+        throw new BadRequestException(
+          'Too many attempts. Please try again later',
+        );
       }
 
       // 处理其他 AWS 服务错误
@@ -251,7 +288,10 @@ export class AuthService {
       }
 
       // 通用错误处理
-      this.logger.error(`Unexpected error during verification for user: ${username}`, error);
+      this.logger.error(
+        `Unexpected error during verification for user: ${username}`,
+        error,
+      );
       throw new BadRequestException('Verification failed. Please try again');
     }
   }

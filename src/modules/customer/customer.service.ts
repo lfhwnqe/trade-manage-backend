@@ -11,8 +11,16 @@ import { DynamodbService } from '../../database/dynamodb.service';
 import { AuthService } from '../../auth/auth.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
-import { QueryCustomerDto, CustomerListResponse } from './dto/query-customer.dto';
-import { Customer, CustomerStatus, IdType, RiskLevel } from './entities/customer.entity';
+import {
+  QueryCustomerDto,
+  CustomerListResponse,
+} from './dto/query-customer.dto';
+import {
+  Customer,
+  CustomerStatus,
+  IdType,
+  RiskLevel,
+} from './entities/customer.entity';
 import { ImportResultDto, ImportErrorDetail } from './dto/import-result.dto';
 import { v4 as uuidv4 } from 'uuid';
 import * as Excel from 'exceljs';
@@ -27,14 +35,18 @@ export class CustomerService {
     private readonly configService: ConfigService,
     private readonly authService: AuthService,
   ) {
-    this.tableName = this.configService.get<string>('database.tables.customers');
+    this.tableName = this.configService.get<string>(
+      'database.tables.customers',
+    );
   }
 
   /**
    * 创建新客户
    */
   async create(createCustomerDto: CreateCustomerDto): Promise<Customer> {
-    this.logger.log(`Creating new customer with email: ${createCustomerDto.email}`);
+    this.logger.log(
+      `Creating new customer with email: ${createCustomerDto.email}`,
+    );
 
     await this.checkEmailExists(createCustomerDto.email);
     await this.checkPhoneExists(createCustomerDto.phone);
@@ -67,7 +79,10 @@ export class CustomerService {
       this.logger.log(`Customer created successfully with ID: ${customerId}`);
       return customer;
     } catch (error) {
-      this.logger.error(`Failed to create customer: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to create customer: ${error.message}`,
+        error.stack,
+      );
       throw new BadRequestException('创建客户失败');
     }
   }
@@ -76,7 +91,9 @@ export class CustomerService {
    * 获取客户列表（支持分页和筛选）
    */
   async findAll(queryDto: QueryCustomerDto): Promise<CustomerListResponse> {
-    this.logger.log(`Querying customers with filters: ${JSON.stringify(queryDto)}`);
+    this.logger.log(
+      `Querying customers with filters: ${JSON.stringify(queryDto)}`,
+    );
 
     try {
       // 构建筛选条件
@@ -108,14 +125,17 @@ export class CustomerService {
       if (queryDto.endDate) {
         if (filterExpression) filterExpression += ' AND ';
         filterExpression += 'createdAt <= :endDate';
-        expressionAttributeValues[':endDate'] = queryDto.endDate + 'T23:59:59.999Z';
+        expressionAttributeValues[':endDate'] =
+          queryDto.endDate + 'T23:59:59.999Z';
       }
 
       // 执行扫描查询
       const allItems = await this.dynamodbService.scan(
         this.tableName,
         filterExpression || undefined,
-        Object.keys(expressionAttributeValues).length > 0 ? expressionAttributeValues : undefined,
+        Object.keys(expressionAttributeValues).length > 0
+          ? expressionAttributeValues
+          : undefined,
       );
 
       // 搜索关键词筛选（在内存中进行）
@@ -136,7 +156,7 @@ export class CustomerService {
       filteredItems.sort((a, b) => {
         const aValue = a[queryDto.sortBy] || '';
         const bValue = b[queryDto.sortBy] || '';
-        
+
         if (queryDto.sortOrder === 'asc') {
           return aValue.localeCompare(bValue);
         } else {
@@ -151,7 +171,9 @@ export class CustomerService {
       const endIndex = startIndex + queryDto.limit;
       const paginatedItems = filteredItems.slice(startIndex, endIndex);
 
-      this.logger.log(`Found ${total} customers, returning page ${queryDto.page} with ${paginatedItems.length} items`);
+      this.logger.log(
+        `Found ${total} customers, returning page ${queryDto.page} with ${paginatedItems.length} items`,
+      );
 
       return {
         data: paginatedItems,
@@ -161,7 +183,10 @@ export class CustomerService {
         totalPages,
       };
     } catch (error) {
-      this.logger.error(`Failed to query customers: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to query customers: ${error.message}`,
+        error.stack,
+      );
       throw new BadRequestException('查询客户列表失败');
     }
   }
@@ -173,7 +198,9 @@ export class CustomerService {
     this.logger.log(`Finding customer with ID: ${customerId}`);
 
     try {
-      const customer = await this.dynamodbService.get(this.tableName, { customerId });
+      const customer = await this.dynamodbService.get(this.tableName, {
+        customerId,
+      });
 
       if (!customer) {
         this.logger.warn(`Customer not found with ID: ${customerId}`);
@@ -186,7 +213,10 @@ export class CustomerService {
       if (error instanceof NotFoundException) {
         throw error;
       }
-      this.logger.error(`Failed to find customer: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to find customer: ${error.message}`,
+        error.stack,
+      );
       throw new BadRequestException('查询客户失败');
     }
   }
@@ -216,7 +246,10 @@ export class CustomerService {
       if (error instanceof NotFoundException) {
         throw error;
       }
-      this.logger.error(`Failed to find customer by email: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to find customer by email: ${error.message}`,
+        error.stack,
+      );
       throw new BadRequestException('查询客户失败');
     }
   }
@@ -246,7 +279,10 @@ export class CustomerService {
       if (error instanceof NotFoundException) {
         throw error;
       }
-      this.logger.error(`Failed to find customer by phone: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to find customer by phone: ${error.message}`,
+        error.stack,
+      );
       throw new BadRequestException('查询客户失败');
     }
   }
@@ -254,19 +290,28 @@ export class CustomerService {
   /**
    * 更新客户信息
    */
-  async update(customerId: string, updateCustomerDto: UpdateCustomerDto): Promise<Customer> {
+  async update(
+    customerId: string,
+    updateCustomerDto: UpdateCustomerDto,
+  ): Promise<Customer> {
     this.logger.log(`Updating customer with ID: ${customerId}`);
 
     // 检查客户是否存在
     const existingCustomer = await this.findOne(customerId);
 
     // 如果更新邮箱，检查新邮箱是否已被其他客户使用
-    if (updateCustomerDto.email && updateCustomerDto.email !== existingCustomer.email) {
+    if (
+      updateCustomerDto.email &&
+      updateCustomerDto.email !== existingCustomer.email
+    ) {
       await this.checkEmailExists(updateCustomerDto.email, customerId);
     }
 
     // 如果更新手机号，检查新手机号是否已被其他客户使用
-    if (updateCustomerDto.phone && updateCustomerDto.phone !== existingCustomer.phone) {
+    if (
+      updateCustomerDto.phone &&
+      updateCustomerDto.phone !== existingCustomer.phone
+    ) {
       await this.checkPhoneExists(updateCustomerDto.phone, customerId);
     }
 
@@ -298,7 +343,10 @@ export class CustomerService {
       this.logger.log(`Customer updated successfully: ${customerId}`);
       return updatedCustomer;
     } catch (error) {
-      this.logger.error(`Failed to update customer: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to update customer: ${error.message}`,
+        error.stack,
+      );
       throw new BadRequestException('更新客户失败');
     }
   }
@@ -317,7 +365,10 @@ export class CustomerService {
       this.logger.log(`Customer deleted successfully: ${customerId}`);
       return { message: '客户删除成功' };
     } catch (error) {
-      this.logger.error(`Failed to delete customer: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to delete customer: ${error.message}`,
+        error.stack,
+      );
       throw new BadRequestException('删除客户失败');
     }
   }
@@ -327,7 +378,10 @@ export class CustomerService {
    * @param email 邮箱
    * @param excludeCustomerId 排除的客户ID（用于更新操作）
    */
-  private async checkEmailExists(email: string, excludeCustomerId?: string): Promise<void> {
+  private async checkEmailExists(
+    email: string,
+    excludeCustomerId?: string,
+  ): Promise<void> {
     try {
       const customers = await this.dynamodbService.query(
         this.tableName,
@@ -336,7 +390,10 @@ export class CustomerService {
         'EmailIndex',
       );
 
-      if (customers.length > 0 && customers[0].customerId !== excludeCustomerId) {
+      if (
+        customers.length > 0 &&
+        customers[0].customerId !== excludeCustomerId
+      ) {
         this.logger.warn(`Email already exists: ${email}`);
         throw new ConflictException('邮箱已被使用');
       }
@@ -344,7 +401,10 @@ export class CustomerService {
       if (error instanceof ConflictException) {
         throw error;
       }
-      this.logger.error(`Error checking email existence: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error checking email existence: ${error.message}`,
+        error.stack,
+      );
       throw new BadRequestException('验证邮箱失败');
     }
   }
@@ -354,7 +414,10 @@ export class CustomerService {
    * @param phone 手机号
    * @param excludeCustomerId 排除的客户ID（用于更新操作）
    */
-  private async checkPhoneExists(phone: string, excludeCustomerId?: string): Promise<void> {
+  private async checkPhoneExists(
+    phone: string,
+    excludeCustomerId?: string,
+  ): Promise<void> {
     try {
       const customers = await this.dynamodbService.query(
         this.tableName,
@@ -363,7 +426,10 @@ export class CustomerService {
         'PhoneIndex',
       );
 
-      if (customers.length > 0 && customers[0].customerId !== excludeCustomerId) {
+      if (
+        customers.length > 0 &&
+        customers[0].customerId !== excludeCustomerId
+      ) {
         this.logger.warn(`Phone already exists: ${phone}`);
         throw new ConflictException('手机号已被使用');
       }
@@ -371,7 +437,10 @@ export class CustomerService {
       if (error instanceof ConflictException) {
         throw error;
       }
-      this.logger.error(`Error checking phone existence: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error checking phone existence: ${error.message}`,
+        error.stack,
+      );
       throw new BadRequestException('验证手机号失败');
     }
   }
@@ -386,12 +455,18 @@ export class CustomerService {
       const allCustomers = await this.dynamodbService.scan(this.tableName);
 
       // 按创建时间排序
-      allCustomers.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      allCustomers.sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      );
 
       this.logger.log(`Retrieved ${allCustomers.length} customers for export`);
       return allCustomers;
     } catch (error) {
-      this.logger.error(`Failed to get customers for export: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get customers for export: ${error.message}`,
+        error.stack,
+      );
       throw new BadRequestException('获取客户数据失败');
     }
   }
@@ -458,7 +533,10 @@ export class CustomerService {
       this.logger.log('Excel file generated successfully');
       return Buffer.from(buffer);
     } catch (error) {
-      this.logger.error(`Failed to generate Excel file: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to generate Excel file: ${error.message}`,
+        error.stack,
+      );
       throw new BadRequestException('生成Excel文件失败');
     }
   }
@@ -466,12 +544,16 @@ export class CustomerService {
   /**
    * 从Excel文件导入客户数据
    */
-  async importCustomersFromExcel(file: Express.Multer.File): Promise<ImportResultDto> {
+  async importCustomersFromExcel(
+    file: Express.Multer.File,
+  ): Promise<ImportResultDto> {
     if (!file) {
       throw new BadRequestException('未提供文件');
     }
 
-    this.logger.log(`Importing customers from Excel file: ${file.originalname}`);
+    this.logger.log(
+      `Importing customers from Excel file: ${file.originalname}`,
+    );
 
     // 检查文件类型
     const validMimeTypes = [
@@ -480,7 +562,9 @@ export class CustomerService {
     ];
 
     if (!validMimeTypes.includes(file.mimetype)) {
-      throw new UnsupportedMediaTypeException('文件格式不支持，请上传Excel文件(.xlsx或.xls)');
+      throw new UnsupportedMediaTypeException(
+        '文件格式不支持，请上传Excel文件(.xlsx或.xls)',
+      );
     }
 
     try {
@@ -561,7 +645,10 @@ export class CustomerService {
       this.logger.log(`Import completed: ${result.message}`);
       return result;
     } catch (error) {
-      this.logger.error(`Failed to import customers: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to import customers: ${error.message}`,
+        error.stack,
+      );
       throw new BadRequestException(`导入客户数据失败: ${error.message}`);
     }
   }
@@ -569,7 +656,9 @@ export class CustomerService {
   /**
    * 验证Excel数据
    */
-  private async validateExcelData(worksheet: Excel.Worksheet): Promise<{ validData: any[]; errors: ImportErrorDetail[] }> {
+  private async validateExcelData(
+    worksheet: Excel.Worksheet,
+  ): Promise<{ validData: any[]; errors: ImportErrorDetail[] }> {
     const validData: any[] = [];
     const errors: ImportErrorDetail[] = [];
 
@@ -582,11 +671,25 @@ export class CustomerService {
     });
 
     // 验证必要的列是否存在
-    const requiredColumns = ['邮箱', '手机号', '姓', '名', '身份证件类型', '身份证件号码', '出生日期', '联系地址', '风险承受等级'];
-    const missingColumns = requiredColumns.filter(col => !headers.includes(col));
+    const requiredColumns = [
+      '邮箱',
+      '手机号',
+      '姓',
+      '名',
+      '身份证件类型',
+      '身份证件号码',
+      '出生日期',
+      '联系地址',
+      '风险承受等级',
+    ];
+    const missingColumns = requiredColumns.filter(
+      (col) => !headers.includes(col),
+    );
 
     if (missingColumns.length > 0) {
-      throw new BadRequestException(`Excel文件缺少必要的列: ${missingColumns.join(', ')}`);
+      throw new BadRequestException(
+        `Excel文件缺少必要的列: ${missingColumns.join(', ')}`,
+      );
     }
 
     // 处理每一行数据
@@ -599,16 +702,16 @@ export class CustomerService {
 
       // 映射列名到字段名
       const columnMapping: { [key: string]: string } = {
-        '邮箱': 'email',
-        '手机号': 'phone',
-        '姓': 'lastName',
-        '名': 'firstName',
-        '身份证件类型': 'idType',
-        '身份证件号码': 'idNumber',
-        '出生日期': 'dateOfBirth',
-        '联系地址': 'address',
-        '风险承受等级': 'riskLevel',
-        '客户状态': 'status',
+        邮箱: 'email',
+        手机号: 'phone',
+        姓: 'lastName',
+        名: 'firstName',
+        身份证件类型: 'idType',
+        身份证件号码: 'idNumber',
+        出生日期: 'dateOfBirth',
+        联系地址: 'address',
+        风险承受等级: 'riskLevel',
+        客户状态: 'status',
       };
 
       // 获取每个单元格的值
@@ -654,7 +757,9 @@ export class CustomerService {
       if (!rowData.idType) {
         rowErrors.push('身份证件类型不能为空');
       } else if (!Object.values(IdType).includes(rowData.idType)) {
-        rowErrors.push(`身份证件类型必须是以下之一: ${Object.values(IdType).join(', ')}`);
+        rowErrors.push(
+          `身份证件类型必须是以下之一: ${Object.values(IdType).join(', ')}`,
+        );
       }
 
       // 验证身份证件号码
@@ -674,12 +779,19 @@ export class CustomerService {
       if (!rowData.riskLevel) {
         rowErrors.push('风险承受等级不能为空');
       } else if (!Object.values(RiskLevel).includes(rowData.riskLevel)) {
-        rowErrors.push(`风险承受等级必须是以下之一: ${Object.values(RiskLevel).join(', ')}`);
+        rowErrors.push(
+          `风险承受等级必须是以下之一: ${Object.values(RiskLevel).join(', ')}`,
+        );
       }
 
       // 验证客户状态（可选）
-      if (rowData.status && !Object.values(CustomerStatus).includes(rowData.status)) {
-        rowErrors.push(`客户状态必须是以下之一: ${Object.values(CustomerStatus).join(', ')}`);
+      if (
+        rowData.status &&
+        !Object.values(CustomerStatus).includes(rowData.status)
+      ) {
+        rowErrors.push(
+          `客户状态必须是以下之一: ${Object.values(CustomerStatus).join(', ')}`,
+        );
       } else if (!rowData.status) {
         // 设置默认状态
         rowData.status = CustomerStatus.ACTIVE;

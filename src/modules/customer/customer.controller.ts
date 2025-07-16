@@ -30,7 +30,10 @@ import { Response } from 'express';
 import { CustomerService } from './customer.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
-import { QueryCustomerDto, CustomerListResponse } from './dto/query-customer.dto';
+import {
+  QueryCustomerDto,
+  CustomerListResponse,
+} from './dto/query-customer.dto';
 import { ImportResultDto } from './dto/import-result.dto';
 import { Customer } from './entities/customer.entity';
 import { RolesGuard } from '../../auth/guards/roles.guard';
@@ -65,7 +68,9 @@ export class CustomerController {
     status: HttpStatus.UNAUTHORIZED,
     description: '未授权',
   })
-  async create(@Body() createCustomerDto: CreateCustomerDto): Promise<Customer> {
+  async create(
+    @Body() createCustomerDto: CreateCustomerDto,
+  ): Promise<Customer> {
     this.logger.log(`Creating customer with email: ${createCustomerDto.email}`);
     return await this.customerService.create(createCustomerDto);
   }
@@ -86,8 +91,12 @@ export class CustomerController {
     status: HttpStatus.UNAUTHORIZED,
     description: '未授权',
   })
-  async findAll(@Query() queryDto: QueryCustomerDto): Promise<CustomerListResponse> {
-    this.logger.log(`Querying customers with params: ${JSON.stringify(queryDto)}`);
+  async findAll(
+    @Query() queryDto: QueryCustomerDto,
+  ): Promise<CustomerListResponse> {
+    this.logger.log(
+      `Querying customers with params: ${JSON.stringify(queryDto)}`,
+    );
     return await this.customerService.findAll(queryDto);
   }
 
@@ -243,7 +252,8 @@ export class CustomerController {
     description: 'Excel文件导出成功',
     headers: {
       'Content-Type': {
-        description: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        description:
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       },
       'Content-Disposition': {
         description: 'attachment; filename="customers.xlsx"',
@@ -266,12 +276,19 @@ export class CustomerController {
       const customers = await this.customerService.getAllCustomersForExport();
 
       // 生成Excel文件
-      const excelBuffer = await this.customerService.generateExcelBuffer(customers);
+      const excelBuffer =
+        await this.customerService.generateExcelBuffer(customers);
 
       // 设置响应头
       const filename = `customers_${new Date().toISOString().split('T')[0]}.xlsx`;
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${filename}"`,
+      );
       res.setHeader('Content-Length', excelBuffer.length);
 
       // 发送文件
@@ -279,7 +296,10 @@ export class CustomerController {
 
       this.logger.log(`Excel file exported successfully: ${filename}`);
     } catch (error) {
-      this.logger.error(`Failed to export customers: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to export customers: ${error.message}`,
+        error.stack,
+      );
       res.status(HttpStatus.BAD_REQUEST).json({
         statusCode: HttpStatus.BAD_REQUEST,
         message: error.message || '导出客户数据失败',
@@ -313,7 +333,9 @@ export class CustomerController {
   async importCustomers(
     @UploadedFile() file: Express.Multer.File,
   ): Promise<ImportResultDto> {
-    this.logger.log(`Importing customers from file: ${file?.originalname || 'unknown'}`);
+    this.logger.log(
+      `Importing customers from file: ${file?.originalname || 'unknown'}`,
+    );
 
     if (!file) {
       throw new BadRequestException('请选择要上传的Excel文件');

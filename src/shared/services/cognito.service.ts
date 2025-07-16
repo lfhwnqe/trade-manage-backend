@@ -109,7 +109,10 @@ export class CognitoService {
     return await this.cognitoClient.send(command);
   }
 
-  async confirmSignUp(username: string, confirmationCode: string): Promise<any> {
+  async confirmSignUp(
+    username: string,
+    confirmationCode: string,
+  ): Promise<any> {
     const command = new ConfirmSignUpCommand({
       ClientId: this.configService.get<string>('cognito.clientId'),
       Username: username,
@@ -119,7 +122,13 @@ export class CognitoService {
     return await this.cognitoClient.send(command);
   }
 
-  async signUp(username: string, password: string, email: string, firstName: string, lastName: string): Promise<any> {
+  async signUp(
+    username: string,
+    password: string,
+    email: string,
+    firstName: string,
+    lastName: string,
+  ): Promise<any> {
     const command = new SignUpCommand({
       ClientId: this.configService.get<string>('cognito.clientId'),
       Username: username,

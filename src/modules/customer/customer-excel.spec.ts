@@ -1,6 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { BadRequestException, UnsupportedMediaTypeException } from '@nestjs/common';
+import {
+  BadRequestException,
+  UnsupportedMediaTypeException,
+} from '@nestjs/common';
 import { CustomerService } from './customer.service';
 import { DynamodbService } from '../../database/dynamodb.service';
 import { CustomerStatus, RiskLevel, IdType } from './entities/customer.entity';
@@ -62,8 +65,16 @@ describe('CustomerService - Excel Import/Export', () => {
   describe('getAllCustomersForExport', () => {
     it('should return all customers sorted by creation time', async () => {
       const customers = [
-        { ...mockCustomer, customerId: 'cust_2', createdAt: '2024-01-02T00:00:00.000Z' },
-        { ...mockCustomer, customerId: 'cust_1', createdAt: '2024-01-01T00:00:00.000Z' },
+        {
+          ...mockCustomer,
+          customerId: 'cust_2',
+          createdAt: '2024-01-02T00:00:00.000Z',
+        },
+        {
+          ...mockCustomer,
+          customerId: 'cust_1',
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
       ];
       dynamodbService.scan.mockResolvedValue(customers);
 
@@ -78,7 +89,9 @@ describe('CustomerService - Excel Import/Export', () => {
     it('should throw BadRequestException on database error', async () => {
       dynamodbService.scan.mockRejectedValue(new Error('Database error'));
 
-      await expect(service.getAllCustomersForExport()).rejects.toThrow(BadRequestException);
+      await expect(service.getAllCustomersForExport()).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -105,7 +118,8 @@ describe('CustomerService - Excel Import/Export', () => {
       fieldname: 'file',
       originalname: 'customers.xlsx',
       encoding: '7bit',
-      mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      mimetype:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       size: 1024,
       buffer: Buffer.from('mock excel data'),
       destination: '',
@@ -115,15 +129,17 @@ describe('CustomerService - Excel Import/Export', () => {
     };
 
     it('should throw BadRequestException if no file provided', async () => {
-      await expect(service.importCustomersFromExcel(null)).rejects.toThrow(BadRequestException);
+      await expect(service.importCustomersFromExcel(null)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw UnsupportedMediaTypeException for invalid file type', async () => {
       const invalidFile = { ...mockFile, mimetype: 'text/plain' };
 
-      await expect(service.importCustomersFromExcel(invalidFile)).rejects.toThrow(
-        UnsupportedMediaTypeException,
-      );
+      await expect(
+        service.importCustomersFromExcel(invalidFile),
+      ).rejects.toThrow(UnsupportedMediaTypeException);
     });
   });
 });

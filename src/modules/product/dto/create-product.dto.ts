@@ -53,7 +53,11 @@ export class CreateProductDto {
   @Min(0)
   maturityPeriod: number;
 
-  @ApiProperty({ description: '产品状态', enum: ProductStatus, required: false })
+  @ApiProperty({
+    description: '产品状态',
+    enum: ProductStatus,
+    required: false,
+  })
   @IsEnum(ProductStatus, { message: '请选择有效的产品状态' })
   @IsOptional()
   status?: ProductStatus = ProductStatus.ACTIVE;

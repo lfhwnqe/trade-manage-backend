@@ -47,7 +47,9 @@ export default () => ({
       files: process.env.DB_TABLE_FILES || 'files',
       customers: process.env.DB_TABLE_CUSTOMERS || 'customers',
       products: process.env.DB_TABLE_PRODUCTS || 'products',
-      customerProductTransactions: process.env.DB_TABLE_CUSTOMER_PRODUCT_TRANSACTIONS || 'customer-product-transactions',
+      customerProductTransactions:
+        process.env.DB_TABLE_CUSTOMER_PRODUCT_TRANSACTIONS ||
+        'customer-product-transactions',
     },
   },
 

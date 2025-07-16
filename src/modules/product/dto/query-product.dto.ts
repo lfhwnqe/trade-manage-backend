@@ -10,7 +10,13 @@ export class QueryProductDto {
   @Min(1)
   page?: number = 1;
 
-  @ApiProperty({ description: '每页数量', example: 10, required: false, minimum: 1, maximum: 100 })
+  @ApiProperty({
+    description: '每页数量',
+    example: 10,
+    required: false,
+    minimum: 1,
+    maximum: 100,
+  })
   @IsOptional()
   @Type(() => Number)
   @Min(1)
@@ -22,22 +28,38 @@ export class QueryProductDto {
   @IsString()
   search?: string;
 
-  @ApiProperty({ description: '产品类型筛选', enum: ProductType, required: false })
+  @ApiProperty({
+    description: '产品类型筛选',
+    enum: ProductType,
+    required: false,
+  })
   @IsOptional()
   @IsEnum(ProductType)
   productType?: ProductType;
 
-  @ApiProperty({ description: '产品状态筛选', enum: ProductStatus, required: false })
+  @ApiProperty({
+    description: '产品状态筛选',
+    enum: ProductStatus,
+    required: false,
+  })
   @IsOptional()
   @IsEnum(ProductStatus)
   status?: ProductStatus;
 
-  @ApiProperty({ description: '排序字段', required: false, enum: ['createdAt', 'updatedAt', 'productName'] })
+  @ApiProperty({
+    description: '排序字段',
+    required: false,
+    enum: ['createdAt', 'updatedAt', 'productName'],
+  })
   @IsOptional()
   @IsString()
   sortBy?: string = 'createdAt';
 
-  @ApiProperty({ description: '排序方向', required: false, enum: ['asc', 'desc'] })
+  @ApiProperty({
+    description: '排序方向',
+    required: false,
+    enum: ['asc', 'desc'],
+  })
   @IsOptional()
   @IsEnum(['asc', 'desc'])
   sortOrder?: 'asc' | 'desc' = 'desc';

@@ -192,7 +192,9 @@ export class UserService {
   }
 
   async setAdmin(targetUserId: string) {
-    const user = await this.dynamodbService.get('users', { userId: targetUserId });
+    const user = await this.dynamodbService.get('users', {
+      userId: targetUserId,
+    });
 
     if (!user) {
       throw new NotFoundException('User not found');

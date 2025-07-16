@@ -1,6 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import { CustomerService } from './customer.service';
 import { DynamodbService } from '../../database/dynamodb.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
@@ -107,13 +111,18 @@ describe('CustomerService', () => {
       expect(result.customerId).toMatch(/^cust_/);
       expect(result.createdAt).toBeDefined();
       expect(result.updatedAt).toBeDefined();
-      expect(dynamodbService.put).toHaveBeenCalledWith('customers', expect.any(Object));
+      expect(dynamodbService.put).toHaveBeenCalledWith(
+        'customers',
+        expect.any(Object),
+      );
     });
 
     it('should throw ConflictException if email already exists', async () => {
       dynamodbService.query.mockResolvedValueOnce([mockCustomer]); // 邮箱已存在
 
-      await expect(service.create(createCustomerDto)).rejects.toThrow(ConflictException);
+      await expect(service.create(createCustomerDto)).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('should throw ConflictException if phone already exists', async () => {
@@ -121,7 +130,9 @@ describe('CustomerService', () => {
         .mockResolvedValueOnce([]) // 邮箱不存在
         .mockResolvedValueOnce([mockCustomer]); // 手机号已存在
 
-      await expect(service.create(createCustomerDto)).rejects.toThrow(ConflictException);
+      await expect(service.create(createCustomerDto)).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 
@@ -132,13 +143,17 @@ describe('CustomerService', () => {
       const result = await service.findOne('cust_test123');
 
       expect(result).toEqual(mockCustomer);
-      expect(dynamodbService.get).toHaveBeenCalledWith('customers', { customerId: 'cust_test123' });
+      expect(dynamodbService.get).toHaveBeenCalledWith('customers', {
+        customerId: 'cust_test123',
+      });
     });
 
     it('should throw NotFoundException if customer not found', async () => {
       dynamodbService.get.mockResolvedValue(null);
 
-      await expect(service.findOne('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -160,7 +175,9 @@ describe('CustomerService', () => {
     it('should throw NotFoundException if customer not found by email', async () => {
       dynamodbService.query.mockResolvedValue([]);
 
-      await expect(service.findByEmail('nonexistent@example.com')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.findByEmail('nonexistent@example.com'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -182,7 +199,9 @@ describe('CustomerService', () => {
     it('should throw NotFoundException if customer not found by phone', async () => {
       dynamodbService.query.mockResolvedValue([]);
 
-      await expect(service.findByPhone('+86 138 0000 0000')).rejects.toThrow(NotFoundException);
+      await expect(service.findByPhone('+86 138 0000 0000')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -206,7 +225,10 @@ describe('CustomerService', () => {
 
     it('should update a customer successfully', async () => {
       dynamodbService.get.mockResolvedValue(mockCustomer);
-      dynamodbService.update.mockResolvedValue({ ...mockCustomer, ...updateCustomerDto });
+      dynamodbService.update.mockResolvedValue({
+        ...mockCustomer,
+        ...updateCustomerDto,
+      });
 
       const result = await service.update('cust_test123', updateCustomerDto);
 
@@ -218,7 +240,9 @@ describe('CustomerService', () => {
     it('should throw NotFoundException if customer not found', async () => {
       dynamodbService.get.mockResolvedValue(null);
 
-      await expect(service.update('nonexistent', updateCustomerDto)).rejects.toThrow(NotFoundException);
+      await expect(
+        service.update('nonexistent', updateCustomerDto),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -230,13 +254,17 @@ describe('CustomerService', () => {
       const result = await service.remove('cust_test123');
 
       expect(result).toEqual({ message: '客户删除成功' });
-      expect(dynamodbService.delete).toHaveBeenCalledWith('customers', { customerId: 'cust_test123' });
+      expect(dynamodbService.delete).toHaveBeenCalledWith('customers', {
+        customerId: 'cust_test123',
+      });
     });
 
     it('should throw NotFoundException if customer not found', async () => {
       dynamodbService.get.mockResolvedValue(null);
 
-      await expect(service.remove('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 

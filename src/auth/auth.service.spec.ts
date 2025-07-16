@@ -1,7 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  UnauthorizedException,
+} from '@nestjs/common';
 
 import { AuthService } from './auth.service';
 import { CognitoService } from '../shared/services/cognito.service';
@@ -77,8 +81,13 @@ describe('AuthService', () => {
 
       const result = await service.verifyRegistration(verifyDto);
 
-      expect(cognitoService.confirmSignUp).toHaveBeenCalledWith('testuser', '123456');
-      expect(dynamodbService.get).toHaveBeenCalledWith('users', { userId: 'testuser' });
+      expect(cognitoService.confirmSignUp).toHaveBeenCalledWith(
+        'testuser',
+        '123456',
+      );
+      expect(dynamodbService.get).toHaveBeenCalledWith('users', {
+        userId: 'testuser',
+      });
       expect(dynamodbService.put).toHaveBeenCalledWith('users', {
         ...mockUser,
         emailVerified: true,
@@ -96,8 +105,12 @@ describe('AuthService', () => {
       error.name = 'CodeMismatchException';
       cognitoService.confirmSignUp.mockRejectedValue(error);
 
-      await expect(service.verifyRegistration(verifyDto)).rejects.toThrow(BadRequestException);
-      await expect(service.verifyRegistration(verifyDto)).rejects.toThrow('Invalid verification code');
+      await expect(service.verifyRegistration(verifyDto)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.verifyRegistration(verifyDto)).rejects.toThrow(
+        'Invalid verification code',
+      );
     });
 
     it('should handle expired verification code', async () => {
@@ -105,8 +118,12 @@ describe('AuthService', () => {
       error.name = 'ExpiredCodeException';
       cognitoService.confirmSignUp.mockRejectedValue(error);
 
-      await expect(service.verifyRegistration(verifyDto)).rejects.toThrow(BadRequestException);
-      await expect(service.verifyRegistration(verifyDto)).rejects.toThrow('Verification code has expired');
+      await expect(service.verifyRegistration(verifyDto)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.verifyRegistration(verifyDto)).rejects.toThrow(
+        'Verification code has expired',
+      );
     });
 
     it('should handle user not found', async () => {
@@ -114,8 +131,12 @@ describe('AuthService', () => {
       error.name = 'UserNotFoundException';
       cognitoService.confirmSignUp.mockRejectedValue(error);
 
-      await expect(service.verifyRegistration(verifyDto)).rejects.toThrow(BadRequestException);
-      await expect(service.verifyRegistration(verifyDto)).rejects.toThrow('User not found');
+      await expect(service.verifyRegistration(verifyDto)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.verifyRegistration(verifyDto)).rejects.toThrow(
+        'User not found',
+      );
     });
 
     it('should handle already verified user', async () => {
@@ -123,8 +144,12 @@ describe('AuthService', () => {
       error.name = 'NotAuthorizedException';
       cognitoService.confirmSignUp.mockRejectedValue(error);
 
-      await expect(service.verifyRegistration(verifyDto)).rejects.toThrow(ConflictException);
-      await expect(service.verifyRegistration(verifyDto)).rejects.toThrow('User is already verified');
+      await expect(service.verifyRegistration(verifyDto)).rejects.toThrow(
+        ConflictException,
+      );
+      await expect(service.verifyRegistration(verifyDto)).rejects.toThrow(
+        'User is already verified',
+      );
     });
 
     it('should handle too many attempts', async () => {
@@ -132,8 +157,12 @@ describe('AuthService', () => {
       error.name = 'LimitExceededException';
       cognitoService.confirmSignUp.mockRejectedValue(error);
 
-      await expect(service.verifyRegistration(verifyDto)).rejects.toThrow(BadRequestException);
-      await expect(service.verifyRegistration(verifyDto)).rejects.toThrow('Too many attempts. Please try again later');
+      await expect(service.verifyRegistration(verifyDto)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.verifyRegistration(verifyDto)).rejects.toThrow(
+        'Too many attempts. Please try again later',
+      );
     });
 
     it('should continue even if DynamoDB update fails', async () => {
@@ -183,19 +212,22 @@ describe('AuthService', () => {
         'TestPassword123!',
         'test@example.com',
         'Test',
-        'User'
+        'User',
       );
-      expect(dynamodbService.put).toHaveBeenCalledWith('users', expect.objectContaining({
-        userId: 'testuser',
-        username: 'testuser',
-        email: 'test@example.com',
-        firstName: 'Test',
-        lastName: 'User',
-        role: 'user',
-        emailVerified: false,
-        status: 'pending_verification',
-        cognitoUserSub: 'cognito-user-id-123',
-      }));
+      expect(dynamodbService.put).toHaveBeenCalledWith(
+        'users',
+        expect.objectContaining({
+          userId: 'testuser',
+          username: 'testuser',
+          email: 'test@example.com',
+          firstName: 'Test',
+          lastName: 'User',
+          role: 'user',
+          emailVerified: false,
+          status: 'pending_verification',
+          cognitoUserSub: 'cognito-user-id-123',
+        }),
+      );
       expect(result.requiresVerification).toBe(true);
       expect(result.message).toContain('verification code');
     });
@@ -204,30 +236,42 @@ describe('AuthService', () => {
       const existingUser = { userId: 'testuser' };
       dynamodbService.get.mockResolvedValue(existingUser);
 
-      await expect(service.register(registerDto)).rejects.toThrow(UnauthorizedException);
-      await expect(service.register(registerDto)).rejects.toThrow('User already exists');
+      await expect(service.register(registerDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
+      await expect(service.register(registerDto)).rejects.toThrow(
+        'User already exists',
+      );
     });
 
     it('should handle username exists in Cognito', async () => {
       const error = new Error('Username exists');
       error.name = 'UsernameExistsException';
-      
+
       dynamodbService.get.mockResolvedValue(null);
       cognitoService.signUp.mockRejectedValue(error);
 
-      await expect(service.register(registerDto)).rejects.toThrow(ConflictException);
-      await expect(service.register(registerDto)).rejects.toThrow('Username already exists');
+      await expect(service.register(registerDto)).rejects.toThrow(
+        ConflictException,
+      );
+      await expect(service.register(registerDto)).rejects.toThrow(
+        'Username already exists',
+      );
     });
 
     it('should handle invalid password', async () => {
       const error = new Error('Invalid password');
       error.name = 'InvalidPasswordException';
-      
+
       dynamodbService.get.mockResolvedValue(null);
       cognitoService.signUp.mockRejectedValue(error);
 
-      await expect(service.register(registerDto)).rejects.toThrow(BadRequestException);
-      await expect(service.register(registerDto)).rejects.toThrow('Password does not meet requirements');
+      await expect(service.register(registerDto)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.register(registerDto)).rejects.toThrow(
+        'Password does not meet requirements',
+      );
     });
   });
 });

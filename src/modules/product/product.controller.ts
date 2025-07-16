@@ -68,7 +68,10 @@ export class ProductController {
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: '更新产品' })
   @ApiParam({ name: 'id', description: '产品ID' })
-  update(@Param('id') id: string, @Body() dto: UpdateProductDto): Promise<Product> {
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateProductDto,
+  ): Promise<Product> {
     return this.productService.update(id, dto);
   }
 

@@ -10,7 +10,13 @@ export class QueryTransactionDto {
   @Min(1)
   page?: number = 1;
 
-  @ApiProperty({ description: '每页数量', required: false, example: 10, minimum: 1, maximum: 100 })
+  @ApiProperty({
+    description: '每页数量',
+    required: false,
+    example: 10,
+    minimum: 1,
+    maximum: 100,
+  })
   @IsOptional()
   @Type(() => Number)
   @Min(1)
@@ -27,17 +33,29 @@ export class QueryTransactionDto {
   @IsString()
   productId?: string;
 
-  @ApiProperty({ description: '交易状态筛选', enum: TransactionStatus, required: false })
+  @ApiProperty({
+    description: '交易状态筛选',
+    enum: TransactionStatus,
+    required: false,
+  })
   @IsOptional()
   @IsEnum(TransactionStatus)
   transactionStatus?: TransactionStatus;
 
-  @ApiProperty({ description: '排序字段', required: false, enum: ['createdAt', 'updatedAt'] })
+  @ApiProperty({
+    description: '排序字段',
+    required: false,
+    enum: ['createdAt', 'updatedAt'],
+  })
   @IsOptional()
   @IsString()
   sortBy?: string = 'createdAt';
 
-  @ApiProperty({ description: '排序方式', required: false, enum: ['asc', 'desc'] })
+  @ApiProperty({
+    description: '排序方式',
+    required: false,
+    enum: ['asc', 'desc'],
+  })
   @IsOptional()
   @IsEnum(['asc', 'desc'])
   sortOrder?: 'asc' | 'desc' = 'desc';

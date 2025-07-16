@@ -34,7 +34,9 @@ export class AuthController {
   }
 
   @Post('verify-registration')
-  @ApiOperation({ summary: 'Verify user registration with email verification code' })
+  @ApiOperation({
+    summary: 'Verify user registration with email verification code',
+  })
   @ApiResponse({
     status: 200,
     description: 'Email verification successful',
@@ -45,17 +47,25 @@ export class AuthController {
         data: {
           type: 'object',
           properties: {
-            message: { type: 'string', example: 'Email verification successful' },
-            verified: { type: 'boolean', example: true }
-          }
+            message: {
+              type: 'string',
+              example: 'Email verification successful',
+            },
+            verified: { type: 'boolean', example: true },
+          },
         },
-        timestamp: { type: 'string', example: '2024-01-01T00:00:00.000Z' }
-      }
-    }
+        timestamp: { type: 'string', example: '2024-01-01T00:00:00.000Z' },
+      },
+    },
   })
-  @ApiResponse({ status: 400, description: 'Invalid verification code or user not found' })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid verification code or user not found',
+  })
   @ApiResponse({ status: 409, description: 'User is already verified' })
-  async verifyRegistration(@Body() verifyRegistrationDto: VerifyRegistrationDto) {
+  async verifyRegistration(
+    @Body() verifyRegistrationDto: VerifyRegistrationDto,
+  ) {
     return this.authService.verifyRegistration(verifyRegistrationDto);
   }
 

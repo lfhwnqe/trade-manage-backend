@@ -1,6 +1,5 @@
 import {
   Injectable,
-
   NotFoundException,
   BadRequestException,
   Logger,
@@ -63,7 +62,8 @@ export class ProductService {
     items.sort((a, b) => {
       const aVal = a[query.sortBy] || '';
       const bVal = b[query.sortBy] || '';
-      if (query.sortOrder === 'asc') return String(aVal).localeCompare(String(bVal));
+      if (query.sortOrder === 'asc')
+        return String(aVal).localeCompare(String(bVal));
       return String(bVal).localeCompare(String(aVal));
     });
 
@@ -77,12 +77,17 @@ export class ProductService {
   }
 
   async findOne(productId: string): Promise<Product> {
-    const product = await this.dynamodbService.get(this.tableName, { productId });
+    const product = await this.dynamodbService.get(this.tableName, {
+      productId,
+    });
     if (!product) throw new NotFoundException('产品不存在');
     return product;
   }
 
-  async update(productId: string, updateDto: UpdateProductDto): Promise<Product> {
+  async update(
+    productId: string,
+    updateDto: UpdateProductDto,
+  ): Promise<Product> {
     await this.findOne(productId);
 
     if (updateDto.productId && updateDto.productId !== productId) {
@@ -91,7 +96,9 @@ export class ProductService {
 
     let updateExpression = 'SET #updatedAt = :updatedAt';
     const names: Record<string, string> = { '#updatedAt': 'updatedAt' };
-    const values: Record<string, any> = { ':updatedAt': new Date().toISOString() };
+    const values: Record<string, any> = {
+      ':updatedAt': new Date().toISOString(),
+    };
 
     Object.keys(updateDto).forEach((key, i) => {
       const attr = `#attr${i}`;
@@ -120,7 +127,10 @@ export class ProductService {
 
   async getAllForExport(): Promise<Product[]> {
     const items = await this.dynamodbService.scan(this.tableName);
-    items.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    items.sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
     return items;
   }
 
@@ -170,7 +180,8 @@ export class ProductService {
         expectedReturn: Number(row.getCell(6).value),
         interestPaymentDate: row.getCell(7).text.trim(),
         maturityPeriod: Number(row.getCell(8).value),
-        status: (row.getCell(9).text.trim() as ProductStatus) || ProductStatus.ACTIVE,
+        status:
+          (row.getCell(9).text.trim() as ProductStatus) || ProductStatus.ACTIVE,
         salesStartDate: row.getCell(10).text.trim(),
         salesEndDate: row.getCell(11).text.trim(),
         description: row.getCell(12).text.trim(),
