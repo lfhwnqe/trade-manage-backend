@@ -157,6 +157,40 @@ export class UserService {
     return { message: 'User promoted to super admin' };
   }
 
+  async initSuperAdmin(username: string) {
+    // Check if super admin already exists
+    const allUsers = await this.dynamodbService.scan('users');
+    const existing = allUsers.find((u) => u.role === 'super_admin');
+
+    if (existing) {
+      throw new BadRequestException('Super admin already exists');
+    }
+
+    // Try finding the user by username
+    const user = await this.dynamodbService.get('users', { userId: username });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (!user.emailVerified) {
+      throw new BadRequestException('Email not verified');
+    }
+
+    await this.dynamodbService.update(
+      'users',
+      { userId: username },
+      'SET #role = :role, #updatedAt = :updatedAt',
+      {
+        ':role': 'super_admin',
+        ':updatedAt': new Date().toISOString(),
+      },
+      { '#role': 'role', '#updatedAt': 'updatedAt' },
+    );
+
+    return { message: 'User promoted to super admin' };
+  }
+
   async setAdmin(targetUserId: string) {
     const user = await this.dynamodbService.get('users', { userId: targetUserId });
 
