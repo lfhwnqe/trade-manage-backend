@@ -20,14 +20,17 @@ A modern NestJS backend application for trade management with AWS CDK deployment
 ```
 ├── src/
 │   ├── auth/                 # Authentication module
-│   ├── common/              # Shared decorators, filters, interceptors
-│   ├── config/              # Configuration management
-│   ├── database/            # DynamoDB service and configuration
-│   ├── modules/             # Business logic modules
-│   │   ├── user/           # User management
-│   │   ├── trade/          # Trade management
-│   │   └── file/           # File management
-│   └── shared/             # Shared services (S3, Cognito)
+│   ├── common/               # Shared decorators, filters, interceptors
+│   ├── config/               # Configuration management
+│   ├── database/             # DynamoDB service and configuration
+│   ├── modules/              # Business logic modules
+│   │   ├── user/             # User management
+│   │   ├── customer/         # Customer management
+│   │   ├── product/          # Product management
+│   │   ├── transaction/      # Transaction management
+│   │   ├── file/             # File management
+│   │   └── stats/            # Statistics and analytics
+│   └── shared/               # Shared services (S3, Cognito)
 ├── infrastructure/         # AWS CDK infrastructure code
 ├── scripts/               # Deployment and development scripts
 └── test/                 # Test files
@@ -120,8 +123,8 @@ Once the server is running, visit:
 - `POST /auth/login` - User login
 - `GET /auth/profile` - Get user profile
 - `GET /users/me` - Get current user info
-- `POST /trades` - Create new trade
-- `GET /trades` - List trades
+- `POST /transactions` - Create new transaction
+- `GET /transactions` - List transactions
 - `POST /files/upload` - Upload file
 - `GET /files` - List files
 
@@ -164,7 +167,7 @@ npm run format
 
 ### DynamoDB Tables
 - **Users Table**: User profiles and authentication data
-- **Trades Table**: Trading records and history
+- **Transactions Table**: Trading records and history
 - **Files Table**: File metadata and references
 
 ### S3 Buckets
