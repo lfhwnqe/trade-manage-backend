@@ -30,8 +30,34 @@ export class StatsService {
   }
 
   async getSummary(): Promise<SummaryStats> {
-    const customers = await this.dynamodbService.scan(this.customersTable);
-    const transactions = await this.dynamodbService.scan(this.transactionsTable);
+    const customers = await this.dynamodbService.scanAll(
+      this.customersTable,
+      undefined,
+      undefined,
+      'customerId',
+    );
+
+    const statuses = [
+      TransactionStatus.PENDING,
+      TransactionStatus.CONFIRMED,
+      TransactionStatus.COMPLETED,
+      TransactionStatus.CANCELLED,
+    ];
+
+    const transactions = (
+      await Promise.all(
+        statuses.map((status) =>
+          this.dynamodbService.queryAll(
+            this.transactionsTable,
+            '#status = :status',
+            { ':status': status },
+            'TransactionStatusIndex',
+            'transactionStatus,customerId,totalAmount,createdAt,completedAt',
+            { '#status': 'transactionStatus' },
+          ),
+        ),
+      )
+    ).flat();
 
     const activeStatuses = [TransactionStatus.PENDING, TransactionStatus.CONFIRMED];
 
@@ -74,8 +100,34 @@ export class StatsService {
   }
 
   async getHistory(granularity: 'day' | 'month' = 'month'): Promise<HistoryEntry[]> {
-    const customers = await this.dynamodbService.scan(this.customersTable);
-    const transactions = await this.dynamodbService.scan(this.transactionsTable);
+    const customers = await this.dynamodbService.scanAll(
+      this.customersTable,
+      undefined,
+      undefined,
+      'customerId,createdAt',
+    );
+
+    const statuses = [
+      TransactionStatus.PENDING,
+      TransactionStatus.CONFIRMED,
+      TransactionStatus.COMPLETED,
+      TransactionStatus.CANCELLED,
+    ];
+
+    const transactions = (
+      await Promise.all(
+        statuses.map((status) =>
+          this.dynamodbService.queryAll(
+            this.transactionsTable,
+            '#status = :status',
+            { ':status': status },
+            'TransactionStatusIndex',
+            'transactionStatus,customerId,totalAmount,createdAt,completedAt',
+            { '#status': 'transactionStatus' },
+          ),
+        ),
+      )
+    ).flat();
 
     const activeStatuses = [TransactionStatus.PENDING, TransactionStatus.CONFIRMED];
 
