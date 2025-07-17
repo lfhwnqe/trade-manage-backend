@@ -96,4 +96,71 @@ export class DynamodbService {
     const result = await this.dynamoClient.send(command);
     return result.Items || [];
   }
+
+  async queryAll(
+    tableName: string,
+    keyConditionExpression: string,
+    expressionAttributeValues: any,
+    indexName?: string,
+    projectionExpression?: string,
+    expressionAttributeNames?: Record<string, string>,
+  ): Promise<any[]> {
+    let lastEvaluatedKey: Record<string, any> | undefined;
+    const items: any[] = [];
+    do {
+      const command = new QueryCommand({
+        TableName: this.getTableName(tableName),
+        KeyConditionExpression: keyConditionExpression,
+        ExpressionAttributeValues: expressionAttributeValues,
+        IndexName: indexName,
+        ProjectionExpression: projectionExpression,
+        ExpressionAttributeNames: expressionAttributeNames,
+        ExclusiveStartKey: lastEvaluatedKey,
+      });
+      const result = await this.dynamoClient.send(command);
+      if (result.Items) items.push(...result.Items);
+      lastEvaluatedKey = result.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+    return items;
+  }
+
+  async scanAll(
+    tableName: string,
+    filterExpression?: string,
+    expressionAttributeValues?: any,
+    projectionExpression?: string,
+    expressionAttributeNames?: Record<string, string>,
+  ): Promise<any[]> {
+    let lastEvaluatedKey: Record<string, any> | undefined;
+    const items: any[] = [];
+    do {
+      const command = new ScanCommand({
+        TableName: this.getTableName(tableName),
+        FilterExpression: filterExpression,
+        ExpressionAttributeValues: expressionAttributeValues,
+        ProjectionExpression: projectionExpression,
+        ExpressionAttributeNames: expressionAttributeNames,
+        ExclusiveStartKey: lastEvaluatedKey,
+      });
+      const result = await this.dynamoClient.send(command);
+      if (result.Items) items.push(...result.Items);
+      lastEvaluatedKey = result.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+    return items;
+  }
+
+  async count(
+    tableName: string,
+    filterExpression?: string,
+    expressionAttributeValues?: any,
+  ): Promise<number> {
+    const command = new ScanCommand({
+      TableName: this.getTableName(tableName),
+      FilterExpression: filterExpression,
+      ExpressionAttributeValues: expressionAttributeValues,
+      Select: 'COUNT',
+    });
+    const result = await this.dynamoClient.send(command);
+    return result.Count || 0;
+  }
 }
