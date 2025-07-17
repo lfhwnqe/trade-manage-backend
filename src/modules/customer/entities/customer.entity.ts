@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { CommunicationRecord } from '../interfaces/communication-record.interface';
+import { CustomerRelation } from '../interfaces/customer-relation.interface';
 
 export enum CustomerStatus {
   ACTIVE = 'active',
@@ -132,4 +133,18 @@ export class Customer {
     required: false,
   })
   communicationRecords?: CommunicationRecord[];
+
+  @ApiProperty({
+    description: '客户关联关系',
+    type: 'array',
+    items: {
+      type: 'object',
+      properties: {
+        customerId: { type: 'string', description: '关联客户ID' },
+        relation: { type: 'string', description: '与该客户的关系' },
+      },
+    },
+    required: false,
+  })
+  relations?: CustomerRelation[];
 }

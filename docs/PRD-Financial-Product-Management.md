@@ -101,7 +101,13 @@
   "riskLevel": "string",       // 风险承受等级 (低/中/高)
   "status": "string",          // 客户状态 (active/inactive/suspended)
   "createdAt": "string",       // 创建时间 (ISO 8601格式)
-  "updatedAt": "string"        // 更新时间 (ISO 8601格式)
+  "updatedAt": "string",       // 更新时间 (ISO 8601格式)
+  "relations": [               // 客户关联关系(可选)
+    {
+      "customerId": "string",  // 关联客户ID
+      "relation": "string"     // 关系描述
+    }
+  ]
 }
 ```
 

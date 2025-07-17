@@ -15,6 +15,8 @@ import { Type } from 'class-transformer';
 import { IdType, RiskLevel, CustomerStatus } from '../entities/customer.entity';
 import { CommunicationRecord } from '../interfaces/communication-record.interface';
 import { CommunicationRecordDto } from './communication-record.dto';
+import { CustomerRelation } from '../interfaces/customer-relation.interface';
+import { CustomerRelationDto } from './customer-relation.dto';
 
 export class UpdateCustomerDto {
   @ApiProperty({
@@ -164,4 +166,23 @@ export class UpdateCustomerDto {
   @ValidateNested({ each: true })
   @Type(() => CommunicationRecordDto)
   communicationRecords?: CommunicationRecord[];
+
+  @ApiProperty({
+    description: '客户关联关系',
+    type: 'array',
+    items: {
+      type: 'object',
+      properties: {
+        customerId: { type: 'string', description: '关联客户ID' },
+        relation: { type: 'string', description: '与该客户的关系' },
+      },
+      required: ['customerId', 'relation'],
+    },
+    required: false,
+  })
+  @IsArray({ message: '客户关联关系必须是数组格式' })
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => CustomerRelationDto)
+  relations?: CustomerRelation[];
 }
