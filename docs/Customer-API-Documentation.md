@@ -29,6 +29,10 @@
   status: 'active' | 'inactive' | 'suspended';  // 客户状态
   createdAt: string;         // 创建时间 (ISO 8601)
   updatedAt: string;         // 更新时间 (ISO 8601)
+  relations?: {
+    customerId: string;      // 关联客户ID
+    relation: string;        // 关系描述
+  }[];                      // 客户关联关系（可选）
 }
 ```
 
