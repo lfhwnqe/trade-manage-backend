@@ -26,6 +26,9 @@ import {
 
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles, Role } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+
+import { UserService } from '../user/user.service';
 
 import { TransactionService } from './transaction.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
@@ -36,13 +39,17 @@ import {
 } from './dto/query-transaction.dto';
 import { ImportResultDto } from './dto/import-result.dto';
 import { Transaction } from './entities/transaction.entity';
+import { PurchasedProductDto } from './dto/purchased-product.dto';
 
 @ApiTags('Transactions')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(RolesGuard)
 @Controller('transactions')
 export class TransactionController {
-  constructor(private readonly service: TransactionService) {}
+  constructor(
+    private readonly service: TransactionService,
+    private readonly userService: UserService,
+  ) {}
 
   @Post()
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.USER)
@@ -58,6 +65,19 @@ export class TransactionController {
     @Query() query: QueryTransactionDto,
   ): Promise<TransactionListResponse> {
     return this.service.findAll(query);
+  }
+
+  @Get('my-products')
+  @Roles(Role.CUSTOMER)
+  @ApiOperation({ summary: '查看已购买的产品' })
+  async getMyProducts(
+    @CurrentUser('userId') userId: string,
+  ): Promise<PurchasedProductDto[]> {
+    const user = await this.userService.findOne(userId);
+    if (!user.customerId) {
+      throw new BadRequestException('未找到客户信息');
+    }
+    return this.service.getPurchasedProducts(user.customerId);
   }
 
   @Get(':id')

@@ -230,4 +230,49 @@ export class TransactionService {
 
     return result;
   }
+
+  async getPurchasedProducts(customerId: string) {
+    const transactions = await this.dynamodbService.query(
+      this.tableName,
+      'customerId = :cid',
+      { ':cid': customerId },
+      'CustomerTransactionsIndex',
+    );
+
+    const productTable = this.configService.get<string>('database.tables.products');
+    const ids = Array.from(new Set(transactions.map((t) => t.productId)));
+    const products = await Promise.all(
+      ids.map((id) => this.dynamodbService.get(productTable, { productId: id })),
+    );
+    const map = new Map(products.filter(Boolean).map((p: any) => [p.productId, p]));
+
+    return transactions.map((t) => {
+      const p = map.get(t.productId);
+      const expectedReturn = p?.expectedReturn;
+      const expectedProfit =
+        expectedReturn !== undefined && t.totalAmount !== undefined
+          ? Number(((t.totalAmount * expectedReturn) / 100).toFixed(2))
+          : undefined;
+      const actualProfit =
+        t.actualReturnRate !== undefined && t.totalAmount !== undefined
+          ? Number(((t.totalAmount * t.actualReturnRate) / 100).toFixed(2))
+          : undefined;
+      return {
+        transactionId: t.transactionId,
+        productId: t.productId,
+        productName: p?.productName,
+        productType: p?.productType,
+        quantity: t.quantity,
+        unitPrice: t.unitPrice,
+        totalAmount: t.totalAmount,
+        transactionStatus: t.transactionStatus,
+        expectedReturn,
+        expectedProfit,
+        actualReturnRate: t.actualReturnRate,
+        actualProfit,
+        expectedMaturityDate: t.expectedMaturityDate,
+        completedAt: t.completedAt,
+      };
+    });
+  }
 }
