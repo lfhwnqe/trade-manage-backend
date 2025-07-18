@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { SwaggerDocumentService } from './shared/services/swagger-document.service';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import * as compression from 'compression';
@@ -77,6 +78,7 @@ async function bootstrap() {
       .build();
 
     const document = SwaggerModule.createDocument(app, config);
+    app.get(SwaggerDocumentService).setDocument(document);
     SwaggerModule.setup(`${apiPrefix}/docs`, app, document, {
       swaggerOptions: {
         persistAuthorization: true,
