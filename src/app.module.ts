@@ -21,6 +21,7 @@ import { DatabaseModule } from './database/database.module';
 import { SharedModule } from './shared/shared.module';
 import { AuthMiddleware } from './auth/middleware/auth.middleware';
 import configuration from './config/configuration';
+import { MastraModule } from './mastra/mastra.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import configuration from './config/configuration';
     ProductModule,
     TransactionModule,
     StatsModule,
+    MastraModule,
     ...(process.env.NODE_ENV === 'development' ? [TypesModule] : []),
   ],
   controllers: [AppController],
@@ -56,7 +58,7 @@ import configuration from './config/configuration';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    const exclusions: Parameters<MiddlewareConsumer['exclude']>[0][] = [
+    const exclusions: Parameters<ReturnType<MiddlewareConsumer['apply']>['exclude']>[0][] = [
       // 认证相关路由
       { path: 'auth/login', method: RequestMethod.POST },
       { path: 'auth/register', method: RequestMethod.POST },
