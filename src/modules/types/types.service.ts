@@ -63,7 +63,9 @@ export class TypesService {
 
     // Extract types from components/schemas
     if (document.components?.schemas) {
-      for (const [name, schema] of Object.entries(document.components.schemas)) {
+      for (const [name, schema] of Object.entries(
+        document.components.schemas,
+      )) {
         const typeDefinition = this.convertSchemaToTypeDefinition(name, schema);
         if (typeDefinition) {
           types.push(typeDefinition);
@@ -78,14 +80,18 @@ export class TypesService {
     }
 
     // Remove duplicates based on name
-    const uniqueTypes = types.filter((type, index, self) =>
-      index === self.findIndex(t => t.name === type.name)
+    const uniqueTypes = types.filter(
+      (type, index, self) =>
+        index === self.findIndex((t) => t.name === type.name),
     );
 
     return uniqueTypes.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  private convertSchemaToTypeDefinition(name: string, schema: any): TypeDefinition | null {
+  private convertSchemaToTypeDefinition(
+    name: string,
+    schema: any,
+  ): TypeDefinition | null {
     try {
       if (!schema || typeof schema !== 'object') {
         return null;
@@ -107,7 +113,9 @@ export class TypesService {
         const required = schema.required || [];
 
         if (schema.properties) {
-          for (const [propName, propSchema] of Object.entries(schema.properties)) {
+          for (const [propName, propSchema] of Object.entries(
+            schema.properties,
+          )) {
             const propertyDef = this.convertPropertySchema(propSchema as any);
             if (propertyDef) {
               properties[propName] = {
@@ -205,18 +213,25 @@ export class TypesService {
           if (operation.requestBody?.content) {
             const requestTypes = this.extractTypesFromContent(
               operation.requestBody.content,
-              `${this.pathToTypeName(path)}${this.capitalizeFirst(method)}Request`
+              `${this.pathToTypeName(path)}${this.capitalizeFirst(method)}Request`,
             );
             types.push(...requestTypes);
           }
 
           // Extract response types
           if (operation.responses) {
-            for (const [statusCode, response] of Object.entries(operation.responses)) {
-              if (response && typeof response === 'object' && 'content' in response && response.content) {
+            for (const [statusCode, response] of Object.entries(
+              operation.responses,
+            )) {
+              if (
+                response &&
+                typeof response === 'object' &&
+                'content' in response &&
+                response.content
+              ) {
                 const responseTypes = this.extractTypesFromContent(
                   response.content,
-                  `${this.pathToTypeName(path)}${this.capitalizeFirst(method)}Response${statusCode}`
+                  `${this.pathToTypeName(path)}${this.capitalizeFirst(method)}Response${statusCode}`,
                 );
                 types.push(...responseTypes);
               }
@@ -231,15 +246,23 @@ export class TypesService {
     return types;
   }
 
-  private extractTypesFromContent(content: any, baseName: string): TypeDefinition[] {
+  private extractTypesFromContent(
+    content: any,
+    baseName: string,
+  ): TypeDefinition[] {
     const types: TypeDefinition[] = [];
 
     try {
       for (const [mediaType, mediaTypeObject] of Object.entries(content)) {
-        if (mediaTypeObject && typeof mediaTypeObject === 'object' && 'schema' in mediaTypeObject && mediaTypeObject.schema) {
+        if (
+          mediaTypeObject &&
+          typeof mediaTypeObject === 'object' &&
+          'schema' in mediaTypeObject &&
+          mediaTypeObject.schema
+        ) {
           const typeDefinition = this.convertSchemaToTypeDefinition(
             `${baseName}${mediaType === 'application/json' ? '' : this.capitalizeFirst(mediaType.replace('/', ''))}`,
-            mediaTypeObject.schema
+            mediaTypeObject.schema,
           );
           if (typeDefinition) {
             types.push(typeDefinition);
@@ -247,7 +270,10 @@ export class TypesService {
         }
       }
     } catch (error) {
-      this.logger.warn(`Failed to extract types from content for ${baseName}:`, error.message);
+      this.logger.warn(
+        `Failed to extract types from content for ${baseName}:`,
+        error.message,
+      );
     }
 
     return types;
@@ -256,8 +282,8 @@ export class TypesService {
   private pathToTypeName(path: string): string {
     return path
       .split('/')
-      .filter(segment => segment && !segment.startsWith('{'))
-      .map(segment => this.capitalizeFirst(segment))
+      .filter((segment) => segment && !segment.startsWith('{'))
+      .map((segment) => this.capitalizeFirst(segment))
       .join('');
   }
 

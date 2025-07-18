@@ -106,7 +106,9 @@ describe('TypesService', () => {
     });
 
     it('should generate types from swagger document', async () => {
-      jest.spyOn(swaggerService, 'getDocument').mockReturnValue(mockSwaggerDocument);
+      jest
+        .spyOn(swaggerService, 'getDocument')
+        .mockReturnValue(mockSwaggerDocument);
 
       const result = await service.generateTypes();
 
@@ -115,7 +117,7 @@ describe('TypesService', () => {
       expect(result.generatedAt).toBeDefined();
 
       // Check User interface
-      const userType = result.types.find(t => t.name === 'User');
+      const userType = result.types.find((t) => t.name === 'User');
       expect(userType).toBeDefined();
       expect(userType?.type).toBe('interface');
       expect(userType?.properties).toBeDefined();
@@ -140,13 +142,15 @@ describe('TypesService', () => {
       });
 
       // Check UserRole enum
-      const roleType = result.types.find(t => t.name === 'UserRole');
+      const roleType = result.types.find((t) => t.name === 'UserRole');
       expect(roleType).toBeDefined();
       expect(roleType?.type).toBe('enum');
       expect(roleType?.values).toEqual(['admin', 'user', 'moderator']);
 
       // Check CreateUserDto interface
-      const createUserType = result.types.find(t => t.name === 'CreateUserDto');
+      const createUserType = result.types.find(
+        (t) => t.name === 'CreateUserDto',
+      );
       expect(createUserType).toBeDefined();
       expect(createUserType?.type).toBe('interface');
       expect(createUserType?.properties?.role).toEqual({
@@ -160,7 +164,9 @@ describe('TypesService', () => {
         throw new Error('Test error');
       });
 
-      await expect(service.generateTypes()).rejects.toThrow('Type generation failed: Test error');
+      await expect(service.generateTypes()).rejects.toThrow(
+        'Type generation failed: Test error',
+      );
     });
 
     it('should remove duplicate types', async () => {
@@ -174,12 +180,17 @@ describe('TypesService', () => {
         },
       };
 
-      jest.spyOn(swaggerService, 'getDocument').mockReturnValue(documentWithDuplicates);
+      jest
+        .spyOn(swaggerService, 'getDocument')
+        .mockReturnValue(documentWithDuplicates);
 
       const result = await service.generateTypes();
 
       expect(result.types).toHaveLength(2);
-      expect(result.types.map(t => t.name).sort()).toEqual(['DuplicateUser', 'User']);
+      expect(result.types.map((t) => t.name).sort()).toEqual([
+        'DuplicateUser',
+        'User',
+      ]);
     });
   });
 });

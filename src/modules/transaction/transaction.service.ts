@@ -239,12 +239,18 @@ export class TransactionService {
       'CustomerTransactionsIndex',
     );
 
-    const productTable = this.configService.get<string>('database.tables.products');
+    const productTable = this.configService.get<string>(
+      'database.tables.products',
+    );
     const ids = Array.from(new Set(transactions.map((t) => t.productId)));
     const products = await Promise.all(
-      ids.map((id) => this.dynamodbService.get(productTable, { productId: id })),
+      ids.map((id) =>
+        this.dynamodbService.get(productTable, { productId: id }),
+      ),
     );
-    const map = new Map(products.filter(Boolean).map((p: any) => [p.productId, p]));
+    const map = new Map(
+      products.filter(Boolean).map((p: any) => [p.productId, p]),
+    );
 
     return transactions.map((t) => {
       const p = map.get(t.productId);

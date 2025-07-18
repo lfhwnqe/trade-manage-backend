@@ -25,8 +25,12 @@ export class StatsService {
     private readonly dynamodbService: DynamodbService,
     private readonly configService: ConfigService,
   ) {
-    this.customersTable = this.configService.get<string>('database.tables.customers');
-    this.transactionsTable = this.configService.get<string>('database.tables.customerProductTransactions');
+    this.customersTable = this.configService.get<string>(
+      'database.tables.customers',
+    );
+    this.transactionsTable = this.configService.get<string>(
+      'database.tables.customerProductTransactions',
+    );
   }
 
   async getSummary(): Promise<SummaryStats> {
@@ -59,17 +63,24 @@ export class StatsService {
       )
     ).flat();
 
-    const activeStatuses = [TransactionStatus.PENDING, TransactionStatus.CONFIRMED];
+    const activeStatuses = [
+      TransactionStatus.PENDING,
+      TransactionStatus.CONFIRMED,
+    ];
 
     const totalCustomers = customers.length;
-    const customersWithTransactions = new Set(transactions.map((t) => t.customerId));
+    const customersWithTransactions = new Set(
+      transactions.map((t) => t.customerId),
+    );
     const activeCustomerIds = new Set(
       transactions
         .filter((t) => activeStatuses.includes(t.transactionStatus))
         .map((t) => t.customerId),
     );
 
-    const activeCustomers = customers.filter((c) => activeCustomerIds.has(c.customerId)).length;
+    const activeCustomers = customers.filter((c) =>
+      activeCustomerIds.has(c.customerId),
+    ).length;
     const customersWithoutTransactions = customers.filter(
       (c) => !customersWithTransactions.has(c.customerId),
     ).length;
@@ -99,7 +110,9 @@ export class StatsService {
     return date.toISOString().slice(0, 7);
   }
 
-  async getHistory(granularity: 'day' | 'month' = 'month'): Promise<HistoryEntry[]> {
+  async getHistory(
+    granularity: 'day' | 'month' = 'month',
+  ): Promise<HistoryEntry[]> {
     const customers = await this.dynamodbService.scanAll(
       this.customersTable,
       undefined,
@@ -129,7 +142,10 @@ export class StatsService {
       )
     ).flat();
 
-    const activeStatuses = [TransactionStatus.PENDING, TransactionStatus.CONFIRMED];
+    const activeStatuses = [
+      TransactionStatus.PENDING,
+      TransactionStatus.CONFIRMED,
+    ];
 
     const buckets: Record<string, HistoryEntry> = {};
 
@@ -163,7 +179,9 @@ export class StatsService {
       const custTxns = transactionsByCustomer[customer.customerId] || [];
       if (custTxns.length === 0) {
         bucket.customersWithoutTransactions += 1;
-      } else if (custTxns.some((t) => activeStatuses.includes(t.transactionStatus))) {
+      } else if (
+        custTxns.some((t) => activeStatuses.includes(t.transactionStatus))
+      ) {
         bucket.activeCustomers += 1;
       }
     }
