@@ -58,7 +58,9 @@ import { MastraModule } from './mastra/mastra.module';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    const exclusions: Parameters<ReturnType<MiddlewareConsumer['apply']>['exclude']>[0][] = [
+    const exclusions: Parameters<
+      ReturnType<MiddlewareConsumer['apply']>['exclude']
+    >[0][] = [
       // 认证相关路由
       { path: 'auth/login', method: RequestMethod.POST },
       { path: 'auth/register', method: RequestMethod.POST },
@@ -75,6 +77,9 @@ export class AppModule implements NestModule {
       exclusions.push({ path: 'types', method: RequestMethod.GET });
     }
 
-    consumer.apply(AuthMiddleware).exclude(...exclusions).forRoutes('*');
+    consumer
+      .apply(AuthMiddleware)
+      .exclude(...exclusions)
+      .forRoutes('*');
   }
 }
