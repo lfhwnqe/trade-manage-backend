@@ -49,36 +49,30 @@ import configuration from './config/configuration';
     ProductModule,
     TransactionModule,
     StatsModule,
-    TypesModule,
+    ...(process.env.NODE_ENV === 'development' ? [TypesModule] : []),
   ],
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(AuthMiddleware)
-      .exclude(
-        // 认证相关路由
-        { path: 'auth/login', method: RequestMethod.POST },
-        { path: 'auth/register', method: RequestMethod.POST },
-        { path: 'auth/verify-registration', method: RequestMethod.POST },
-        // 应用基础路由
-        { path: '', method: RequestMethod.GET },
-        { path: 'health', method: RequestMethod.GET },
-        // API 文档路由
-        { path: 'docs', method: RequestMethod.GET },
-        { path: 'docs/(.*)', method: RequestMethod.GET },
-        { path: 'types', method: RequestMethod.GET },
-        // 如果有 svg-parser 相关路由，可以在这里添加
-        // { path: 'svg-parser/parse', method: RequestMethod.POST },
-        // { path: 'svg-parser/parse-string', method: RequestMethod.POST },
-        // { path: 'svg-parser/parse-url', method: RequestMethod.POST },
-        // { path: 'svg-parser/parse-file', method: RequestMethod.POST },
-        // { path: 'svg-parser/validate', method: RequestMethod.POST },
-        // 如果有 mindmap 相关路由，可以在这里添加
-        // { path: 'mindmap', method: RequestMethod.GET },
-      )
-      .forRoutes('*');
+    const exclusions: Parameters<MiddlewareConsumer['exclude']>[0][] = [
+      // 认证相关路由
+      { path: 'auth/login', method: RequestMethod.POST },
+      { path: 'auth/register', method: RequestMethod.POST },
+      { path: 'auth/verify-registration', method: RequestMethod.POST },
+      // 应用基础路由
+      { path: '', method: RequestMethod.GET },
+      { path: 'health', method: RequestMethod.GET },
+      // API 文档路由
+      { path: 'docs', method: RequestMethod.GET },
+      { path: 'docs/(.*)', method: RequestMethod.GET },
+    ];
+
+    if (process.env.NODE_ENV === 'development') {
+      exclusions.push({ path: 'types', method: RequestMethod.GET });
+    }
+
+    consumer.apply(AuthMiddleware).exclude(...exclusions).forRoutes('*');
   }
 }
