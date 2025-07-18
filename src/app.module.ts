@@ -16,6 +16,7 @@ import { CustomerModule } from './modules/customer/customer.module';
 import { ProductModule } from './modules/product/product.module';
 import { TransactionModule } from './modules/transaction/transaction.module';
 import { StatsModule } from './modules/stats/stats.module';
+import { TypesModule } from './modules/types/types.module';
 import { DatabaseModule } from './database/database.module';
 import { SharedModule } from './shared/shared.module';
 import { AuthMiddleware } from './auth/middleware/auth.middleware';
@@ -48,6 +49,7 @@ import configuration from './config/configuration';
     ProductModule,
     TransactionModule,
     StatsModule,
+    TypesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
@@ -67,6 +69,7 @@ export class AppModule implements NestModule {
         // API 文档路由
         { path: 'docs', method: RequestMethod.GET },
         { path: 'docs/(.*)', method: RequestMethod.GET },
+        { path: 'types', method: RequestMethod.GET },
         // 如果有 svg-parser 相关路由，可以在这里添加
         // { path: 'svg-parser/parse', method: RequestMethod.POST },
         // { path: 'svg-parser/parse-string', method: RequestMethod.POST },
