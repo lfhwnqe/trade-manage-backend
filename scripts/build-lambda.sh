@@ -40,8 +40,8 @@ echo "📦 Installing production dependencies..."
 cp package.json lambda-package/
 cd lambda-package
 
-# Install only production dependencies
-npm install --only=production --no-package-lock
+# Install only production dependencies without running postinstall scripts
+HUSKY=0 npm install --only=production --no-package-lock --ignore-scripts
 
 # Remove unnecessary files to reduce package size
 echo "🗑️  Removing unnecessary files..."
