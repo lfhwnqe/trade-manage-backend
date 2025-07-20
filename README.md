@@ -269,6 +269,14 @@ For support and questions:
 - Check the troubleshooting section
 - Review AWS documentation for service-specific issues
 
+## 📦 Dependency Notes
+
+This project uses AI workflows via Mastra and the `ai` SDK. To avoid version
+conflicts when deploying AWS Lambda functions, the `@openrouter/ai-sdk-provider`
+package is pinned to **`1.0.0-beta.1`**, which is compatible with `zod` v3 used
+by the `ai` library. If `npm install` fails with dependency resolution errors,
+ensure that this exact version is used.
+
 ## 🔄 Version History
 
 - **v1.0.0** - Initial release with core functionality
