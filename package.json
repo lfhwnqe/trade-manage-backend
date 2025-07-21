@@ -21,12 +21,11 @@
     "cdk:destroy:prod": "cd infrastructure && npm run cdk destroy -- --context environment=prod",
     "cdk:diff:dev": "cd infrastructure && npm run cdk diff -- --context environment=dev",
     "cdk:diff:prod": "cd infrastructure && npm run cdk diff -- --context environment=prod",
-    "build:lambda": "./scripts/build-lambda.sh",
-    "deploy:lambda:dev": "npm run build:lambda && npm run cdk:deploy:dev",
-    "deploy:lambda:prod": "npm run build:lambda && npm run cdk:deploy:prod",
-    "deploy:dev": "npm run build:lambda && npm run cdk:deploy:dev",
-    "deploy:prod": "npm run build:lambda && npm run cdk:deploy:prod",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "build:lambda:dev": "rm -rf lambda-package lambda-temp-build && mkdir -p lambda-package && npx tsc -p tsconfig.lambda.json && npx webpack --config webpack.lambda.config.js && cp -r lambda-temp-build/* lambda-package/ && cp package.json lambda-package/ && ln -s ../node_modules lambda-package/node_modules && rm -rf lambda-temp-build",
+    "build:lambda:prod": "rm -rf lambda-package lambda-temp-build && mkdir -p lambda-package && npx tsc -p tsconfig.lambda.json && npx webpack --config webpack.lambda.config.js && cp -r lambda-temp-build/* lambda-package/ && cp -r node_modules lambda-package/ && cp package.json lambda-package/ && cp yarn.lock lambda-package/ && rm -rf lambda-temp-build",
+    "deploy:dev": "npm run build:lambda:dev && npm run cdk:deploy:dev",
+    "deploy:prod": "npm run build:lambda:prod && npm run cdk:deploy:prod"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.490.0",
