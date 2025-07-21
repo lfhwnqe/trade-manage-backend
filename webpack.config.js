@@ -6,7 +6,7 @@ module.exports = {
   target: 'node',
   entry: './src/lambda.ts',
   output: {
-    path: path.resolve(__dirname, 'lambda-package'),
+    path: path.resolve(__dirname, 'dist'),
     filename: 'lambda.js',
     libraryTarget: 'commonjs2',
   },

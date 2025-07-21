@@ -97,7 +97,7 @@ npm run start:dev
 
 ```bash
 # Deploy to development
-npm run deploy:dev
+yarn deploy:dev
 # or
 ./scripts/deploy.sh -e dev
 ```
@@ -106,7 +106,7 @@ npm run deploy:dev
 
 ```bash
 # Deploy to production
-npm run deploy:prod
+yarn deploy:prod
 # or
 ./scripts/deploy.sh -e prod
 ```
