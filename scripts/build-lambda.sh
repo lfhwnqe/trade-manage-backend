@@ -38,11 +38,11 @@ rm -rf $TEMP_BUILD_DIR
 # Copy package.json and install production dependencies
 echo "📦 Installing production dependencies..."
 cp package.json lambda-package/
-cp pnpm-lock.yaml lambda-package/
+cp yarn.lock lambda-package/
 cd lambda-package
 
 # Install only production dependencies without running postinstall scripts
-HUSKY=0 pnpm install --prod --frozen-lockfile --ignore-scripts
+HUSKY=0 yarn install --production --frozen-lockfile --ignore-scripts
 
 # Remove unnecessary files to reduce package size
 echo "🗑️  Removing unnecessary files..."
