@@ -21,7 +21,6 @@ import { DatabaseModule } from './database/database.module';
 import { SharedModule } from './shared/shared.module';
 import { AuthMiddleware } from './auth/middleware/auth.middleware';
 import configuration from './config/configuration';
-import { MastraModule } from './mastra/mastra.module';
 
 @Module({
   imports: [
@@ -50,7 +49,6 @@ import { MastraModule } from './mastra/mastra.module';
     ProductModule,
     TransactionModule,
     StatsModule,
-    MastraModule,
     ...(process.env.NODE_ENV === 'development' ? [TypesModule] : []),
   ],
   controllers: [AppController],
