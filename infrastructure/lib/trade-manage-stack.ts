@@ -320,7 +320,7 @@ export class TradeManageStack extends cdk.Stack {
       functionName: `trade-manage-api-${environment}`,
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'lambda.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../lambda-package')),
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../dist')),
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
       environment: {
