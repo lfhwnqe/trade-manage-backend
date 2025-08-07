@@ -245,7 +245,10 @@ export class AuthService {
 
     try {
       // 调用 Cognito 确认用户注册
-      await this.cognitoService.confirmSignUp(cognitoUsername, verificationCode);
+      await this.cognitoService.confirmSignUp(
+        cognitoUsername,
+        verificationCode,
+      );
 
       this.logger.log(
         `Successfully verified registration for user: ${username}`,
