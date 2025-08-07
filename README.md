@@ -168,8 +168,11 @@ npm run test:cov
 # Development server with hot reload
 npm run start:dev
 
-# Build for production
+# Build for production (outputs to build/ directory)
 npm run build
+
+# Start production server from build output
+npm run start:prod
 
 # Lint code
 npm run lint

@@ -572,7 +572,7 @@ export class CustomerService {
     try {
       // 解析Excel文件
       const workbook = new Excel.Workbook();
-      await workbook.xlsx.load(file.buffer);
+      await workbook.xlsx.load(file.buffer as any);
 
       const worksheet = workbook.getWorksheet(1); // 获取第一个工作表
       if (!worksheet) {

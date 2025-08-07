@@ -41,7 +41,7 @@ cp package.json lambda-package/
 cd lambda-package
 
 # Install only production dependencies
-npm install --only=production --no-package-lock
+npm install --only=production --no-package-lock --legacy-peer-deps
 
 # Remove unnecessary files to reduce package size
 echo "🗑️  Removing unnecessary files..."

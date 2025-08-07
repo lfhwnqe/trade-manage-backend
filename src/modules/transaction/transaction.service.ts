@@ -180,7 +180,7 @@ export class TransactionService {
     }
 
     const workbook = new Excel.Workbook();
-    await workbook.xlsx.load(file.buffer);
+    await workbook.xlsx.load(file.buffer as any);
     const worksheet = workbook.worksheets[0];
 
     const rows: any[] = [];
