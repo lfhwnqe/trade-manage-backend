@@ -111,6 +111,24 @@ npm run deploy:prod
 ./scripts/deploy.sh -e prod
 ```
 
+### Destroy Stack
+
+#### Development Environment
+```bash
+# Destroy development stack
+npm run destroy:dev
+# or
+./scripts/deploy.sh -e dev --destroy
+```
+
+#### Production Environment
+```bash
+# Destroy production stack
+npm run destroy:prod
+# or
+./scripts/deploy.sh -e prod --destroy
+```
+
 ## 📚 API Documentation
 
 Once the server is running, visit:

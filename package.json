@@ -24,6 +24,8 @@
     "build:lambda": "./scripts/build-lambda.sh",
     "deploy:lambda:dev": "npm run build:lambda && npm run cdk:deploy:dev",
     "deploy:lambda:prod": "npm run build:lambda && npm run cdk:deploy:prod",
+    "destroy:lambda:dev": "npm run cdk:destroy:dev",
+    "destroy:lambda:prod": "npm run cdk:destroy:prod",
     "deploy:dev": "npm run build:lambda && npm run cdk:deploy:dev",
     "deploy:prod": "npm run build:lambda && npm run cdk:deploy:prod",
     "prepare": "if [ -d .git ]; then husky install; fi"
