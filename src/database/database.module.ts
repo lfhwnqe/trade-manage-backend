@@ -12,12 +12,14 @@ import { DynamodbService } from './dynamodb.service';
     {
       provide: 'DYNAMODB_CLIENT',
       useFactory: (configService: ConfigService) => {
+        const region = configService.get<string>('aws.region');
+
+        // AWS SDK will automatically use:
+        // - Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY) for local development
+        // - IAM roles when running in Lambda/EC2
+        // - AWS CLI credentials as fallback
         const client = new DynamoDBClient({
-          region: configService.get<string>('aws.region'),
-          credentials: {
-            accessKeyId: configService.get<string>('aws.accessKeyId'),
-            secretAccessKey: configService.get<string>('aws.secretAccessKey'),
-          },
+          region,
         });
         return DynamoDBDocumentClient.from(client);
       },

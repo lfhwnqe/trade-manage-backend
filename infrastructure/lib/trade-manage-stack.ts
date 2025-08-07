@@ -425,56 +425,75 @@ export class TradeManageStack extends cdk.Stack {
       anyMethod: true,
     });
 
-    // Outputs in .env format for easy copying
-    new cdk.CfnOutput(this, 'EnvVars', {
-      value: [
-        `# Application Configuration`,
-        `NODE_ENV=${environment === 'prod' ? 'production' : 'development'}`,
-        `PORT=3000`,
-        `APP_NAME=trade-manage-backend`,
-        ``,
-        `# AWS Configuration`,
-        `AWS_REGION=${this.region}`,
-        `# AWS_ACCESS_KEY_ID=your-access-key-id  # Set this for local development`,
-        `# AWS_SECRET_ACCESS_KEY=your-secret-access-key  # Set this for local development`,
-        ``,
-        `# AWS S3 Configuration`,
-        `S3_BUCKET_NAME=${this.s3Bucket.bucketName}`,
-        `S3_REGION=${this.region}`,
-        ``,
-        `# AWS Cognito Configuration`,
-        `COGNITO_USER_POOL_ID=${this.userPool.userPoolId}`,
-        `COGNITO_CLIENT_ID=${this.userPoolClient.userPoolClientId}`,
-        `COGNITO_REGION=${this.region}`,
-        ``,
-        `# AWS DynamoDB Configuration`,
-        `DYNAMODB_REGION=${this.region}`,
-        `DYNAMODB_TABLE_PREFIX=trade-manage-${environment}`,
-        ``,
-        `# JWT Configuration`,
-        `JWT_SECRET=${environment === 'prod' ? 'CHANGE_THIS_IN_PRODUCTION' : 'dev-secret-key'}`,
-        `JWT_EXPIRES_IN=24h`,
-        ``,
-        `# Database Configuration`,
-        `DB_TABLE_USERS=${this.usersTable.tableName}`,
-        `DB_TABLE_TRADES=${this.tradesTable.tableName}`,
-        `DB_TABLE_FILES=${this.filesTable.tableName}`,
-        `DB_TABLE_CUSTOMERS=${this.customersTable.tableName}`,
-        `DB_TABLE_PRODUCTS=${this.productsTable.tableName}`,
-        `DB_TABLE_CUSTOMER_PRODUCT_TRANSACTIONS=${this.customerProductTransactionsTable.tableName}`,
-        ``,
-        `# API Configuration`,
-        `API_PREFIX=api/v1`,
-        `SWAGGER_TITLE=Trade Management API`,
-        `SWAGGER_DESCRIPTION=API for Trade Management System`,
-        `SWAGGER_VERSION=1.0.0`,
-        ``,
-        `# Deployment Information (for reference)`,
-        `API_GATEWAY_URL=${this.api.url}`,
-        `API_GATEWAY_ID=${this.api.restApiId}`,
-        `API_LAMBDA_FUNCTION_NAME=${this.apiLambda.functionName}`,
-      ].join('\n'),
-      description: 'Complete .env file content - copy and paste into your .env file',
+    // Create .env file content
+    const envContent = [
+      `# Application Configuration`,
+      `NODE_ENV=${environment === 'prod' ? 'production' : 'development'}`,
+      `PORT=3000`,
+      `APP_NAME=trade-manage-backend`,
+      ``,
+      `# AWS Configuration`,
+      `AWS_REGION=${this.region}`,
+      ``,
+      `# AWS S3 Configuration`,
+      `S3_BUCKET_NAME=${this.s3Bucket.bucketName}`,
+      `S3_REGION=${this.region}`,
+      ``,
+      `# AWS Cognito Configuration`,
+      `COGNITO_USER_POOL_ID=${this.userPool.userPoolId}`,
+      `COGNITO_CLIENT_ID=${this.userPoolClient.userPoolClientId}`,
+      `COGNITO_REGION=${this.region}`,
+      ``,
+      `# AWS DynamoDB Configuration`,
+      `DYNAMODB_REGION=${this.region}`,
+      `DYNAMODB_TABLE_PREFIX=trade-manage-${environment}`,
+      ``,
+      `# JWT Configuration`,
+      `JWT_SECRET=${environment === 'prod' ? 'CHANGE_THIS_IN_PRODUCTION' : 'dev-secret-key'}`,
+      `JWT_EXPIRES_IN=24h`,
+      ``,
+      `# Database Configuration`,
+      `DB_TABLE_USERS=${this.usersTable.tableName}`,
+      `DB_TABLE_TRADES=${this.tradesTable.tableName}`,
+      `DB_TABLE_FILES=${this.filesTable.tableName}`,
+      `DB_TABLE_CUSTOMERS=${this.customersTable.tableName}`,
+      `DB_TABLE_PRODUCTS=${this.productsTable.tableName}`,
+      `DB_TABLE_CUSTOMER_PRODUCT_TRANSACTIONS=${this.customerProductTransactionsTable.tableName}`,
+      ``,
+      `# API Configuration`,
+      `API_PREFIX=api/v1`,
+      `SWAGGER_TITLE=Trade Management API`,
+      `SWAGGER_DESCRIPTION=API for Trade Management System`,
+      `SWAGGER_VERSION=1.0.0`,
+      ``,
+      `# Deployment Information (for reference)`,
+      `API_GATEWAY_URL=${this.api.url}`,
+      `API_GATEWAY_ID=${this.api.restApiId}`,
+      `API_LAMBDA_FUNCTION_NAME=${this.apiLambda.functionName}`,
+    ].join('\n');
+
+    // Output API endpoint for quick reference
+    new cdk.CfnOutput(this, 'ApiEndpoint', {
+      value: this.api.url,
+      description: 'API Gateway endpoint URL',
+    });
+
+    // Output .env file content with clear instructions
+    new cdk.CfnOutput(this, 'EnvFileContent', {
+      value: `
+=== COPY THE CONTENT BELOW TO YOUR .env FILE ===
+
+${envContent}
+
+=== END OF .env FILE CONTENT ===
+
+NOTES:
+- AWS credentials are handled automatically by AWS SDK
+- In Lambda: Uses IAM roles (no credentials needed)
+- Local development: Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY as environment variables
+- Never commit AWS credentials to code!
+`,
+      description: 'Ready-to-use .env file content - copy everything between the === markers',
     });
   }
 }

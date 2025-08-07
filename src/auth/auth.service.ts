@@ -26,6 +26,11 @@ export class AuthService {
     private dynamodbService: DynamodbService,
   ) {}
 
+  private isEmailFormat(username: string): boolean {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(username);
+  }
+
   async validateUser(username: string, password: string): Promise<any> {
     try {
       // This is a simplified validation - in production, you'd integrate with Cognito properly
@@ -75,7 +80,17 @@ export class AuthService {
       `Attempting to register user: ${username} with email: ${email}`,
     );
 
-    // Check if user already exists in DynamoDB
+    // Generate a unique username for Cognito if the provided username is an email
+    // Cognito doesn't allow email format usernames when email aliases are enabled
+    let cognitoUsername = username;
+    if (this.isEmailFormat(username)) {
+      // Generate a unique username based on email prefix and timestamp
+      const emailPrefix = email.split('@')[0];
+      const timestamp = Date.now().toString().slice(-6); // Last 6 digits of timestamp
+      cognitoUsername = `${emailPrefix}_${timestamp}`;
+    }
+
+    // Check if user already exists in DynamoDB (using original username as userId)
     const existingUser = await this.dynamodbService.get('users', {
       userId: username,
     });
@@ -86,7 +101,7 @@ export class AuthService {
     try {
       // Create user in Cognito first (this will send verification email)
       const cognitoResult = await this.cognitoService.signUp(
-        username,
+        cognitoUsername,
         password,
         email,
         firstName,
@@ -94,7 +109,7 @@ export class AuthService {
       );
 
       this.logger.log(
-        `Successfully created user in Cognito: ${username}, UserSub: ${cognitoResult.UserSub}`,
+        `Successfully created user in Cognito: ${cognitoUsername}, UserSub: ${cognitoResult.UserSub}`,
       );
 
       // Hash password for DynamoDB storage
@@ -102,8 +117,9 @@ export class AuthService {
 
       // Create user in DynamoDB with pending verification status
       const newUser = {
-        userId: username,
+        userId: username, // Keep original username as userId for consistency
         username,
+        cognitoUsername, // Store the Cognito username for future reference
         email,
         password: hashedPassword,
         firstName,
@@ -215,9 +231,21 @@ export class AuthService {
 
     this.logger.log(`Attempting to verify registration for user: ${username}`);
 
+    // Get user from DynamoDB to find the Cognito username
+    const user = await this.dynamodbService.get('users', {
+      userId: username,
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    // Use the stored Cognito username for verification
+    const cognitoUsername = user.cognitoUsername || username;
+
     try {
       // 调用 Cognito 确认用户注册
-      await this.cognitoService.confirmSignUp(username, verificationCode);
+      await this.cognitoService.confirmSignUp(cognitoUsername, verificationCode);
 
       this.logger.log(
         `Successfully verified registration for user: ${username}`,
@@ -225,22 +253,16 @@ export class AuthService {
 
       // 更新 DynamoDB 中的用户状态为已验证
       try {
-        const user = await this.dynamodbService.get('users', {
-          userId: username,
+        await this.dynamodbService.put('users', {
+          ...user,
+          emailVerified: true,
+          status: 'active',
+          updatedAt: new Date().toISOString(),
         });
 
-        if (user) {
-          await this.dynamodbService.put('users', {
-            ...user,
-            emailVerified: true,
-            status: 'active',
-            updatedAt: new Date().toISOString(),
-          });
-
-          this.logger.log(
-            `Updated user status in DynamoDB for user: ${username}`,
-          );
-        }
+        this.logger.log(
+          `Updated user status in DynamoDB for user: ${username}`,
+        );
       } catch (dbError) {
         this.logger.warn(
           `Failed to update user status in DynamoDB for user: ${username}`,

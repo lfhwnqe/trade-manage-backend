@@ -18,12 +18,14 @@ export class CognitoService {
   private userPoolId: string;
 
   constructor(private configService: ConfigService) {
+    const region = this.configService.get<string>('cognito.region');
+
+    // AWS SDK will automatically use:
+    // - Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY) for local development
+    // - IAM roles when running in Lambda/EC2
+    // - AWS CLI credentials as fallback
     this.cognitoClient = new CognitoIdentityProviderClient({
-      region: this.configService.get<string>('cognito.region'),
-      credentials: {
-        accessKeyId: this.configService.get<string>('aws.accessKeyId'),
-        secretAccessKey: this.configService.get<string>('aws.secretAccessKey'),
-      },
+      region,
     });
     this.userPoolId = this.configService.get<string>('cognito.userPoolId');
   }

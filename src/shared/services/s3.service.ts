@@ -15,12 +15,14 @@ export class S3Service {
   private bucketName: string;
 
   constructor(private configService: ConfigService) {
+    const region = this.configService.get<string>('s3.region');
+
+    // AWS SDK will automatically use:
+    // - Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY) for local development
+    // - IAM roles when running in Lambda/EC2
+    // - AWS CLI credentials as fallback
     this.s3Client = new S3Client({
-      region: this.configService.get<string>('s3.region'),
-      credentials: {
-        accessKeyId: this.configService.get<string>('aws.accessKeyId'),
-        secretAccessKey: this.configService.get<string>('aws.secretAccessKey'),
-      },
+      region,
     });
     this.bucketName = this.configService.get<string>('s3.bucketName');
   }
