@@ -28,7 +28,10 @@ export class ProductService {
     this.tableName = this.configService.get<string>('database.tables.products');
   }
 
-  async create(createDto: CreateProductDto, createdBy: string): Promise<Product> {
+  async create(
+    createDto: CreateProductDto,
+    createdBy: string,
+  ): Promise<Product> {
     const now = new Date().toISOString();
     const productId = `prod_${uuidv4()}`;
 
@@ -107,7 +110,10 @@ export class ProductService {
     currentUser: { userId: string; role: string },
   ): Promise<Product> {
     const existing = await this.findOne(productId);
-    if (currentUser.role !== 'super_admin' && existing.createdBy !== currentUser.userId) {
+    if (
+      currentUser.role !== 'super_admin' &&
+      existing.createdBy !== currentUser.userId
+    ) {
       throw new NotFoundException('产品不存在');
     }
 
@@ -145,18 +151,25 @@ export class ProductService {
     currentUser: { userId: string; role: string },
   ): Promise<{ message: string }> {
     const existing = await this.findOne(productId);
-    if (currentUser.role !== 'super_admin' && existing.createdBy !== currentUser.userId) {
+    if (
+      currentUser.role !== 'super_admin' &&
+      existing.createdBy !== currentUser.userId
+    ) {
       throw new NotFoundException('产品不存在');
     }
     await this.dynamodbService.delete(this.tableName, { productId });
     return { message: '产品删除成功' };
   }
 
-  async getAllForExport(currentUser: { userId: string; role: string }): Promise<Product[]> {
+  async getAllForExport(currentUser: {
+    userId: string;
+    role: string;
+  }): Promise<Product[]> {
     const items = await this.dynamodbService.scan(this.tableName);
-    const filtered = (currentUser.role === 'super_admin')
-      ? items
-      : items.filter((p) => p.createdBy === currentUser.userId);
+    const filtered =
+      currentUser.role === 'super_admin'
+        ? items
+        : items.filter((p) => p.createdBy === currentUser.userId);
     filtered.sort(
       (a, b) =>
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),

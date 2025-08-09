@@ -497,14 +497,18 @@ export class CustomerService {
   /**
    * 获取所有客户数据用于导出
    */
-  async getAllCustomersForExport(currentUser: { userId: string; role: string }): Promise<Customer[]> {
+  async getAllCustomersForExport(currentUser: {
+    userId: string;
+    role: string;
+  }): Promise<Customer[]> {
     this.logger.log('Getting all customers for export');
 
     try {
       const allCustomers = await this.dynamodbService.scan(this.tableName);
-      const filtered = (currentUser.role === 'super_admin')
-        ? allCustomers
-        : allCustomers.filter((c) => c.createdBy === currentUser.userId);
+      const filtered =
+        currentUser.role === 'super_admin'
+          ? allCustomers
+          : allCustomers.filter((c) => c.createdBy === currentUser.userId);
 
       // 按创建时间排序
       filtered.sort(
@@ -657,18 +661,21 @@ export class CustomerService {
           }
 
           // 创建新客户
-          await this.create({
-            email: data.email,
-            phone: data.phone,
-            firstName: data.firstName,
-            lastName: data.lastName,
-            idType: data.idType as IdType,
-            idNumber: data.idNumber,
-            dateOfBirth: data.dateOfBirth,
-            address: data.address,
-            riskLevel: data.riskLevel as RiskLevel,
-            status: data.status as CustomerStatus,
-          }, createdBy);
+          await this.create(
+            {
+              email: data.email,
+              phone: data.phone,
+              firstName: data.firstName,
+              lastName: data.lastName,
+              idType: data.idType as IdType,
+              idNumber: data.idNumber,
+              dateOfBirth: data.dateOfBirth,
+              address: data.address,
+              riskLevel: data.riskLevel as RiskLevel,
+              status: data.status as CustomerStatus,
+            },
+            createdBy,
+          );
 
           successCount++;
         } catch (error) {

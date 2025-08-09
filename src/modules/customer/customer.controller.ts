@@ -100,7 +100,10 @@ export class CustomerController {
     this.logger.log(
       `Querying customers with params: ${JSON.stringify(queryDto)}`,
     );
-    return await this.customerService.findAll(queryDto, { userId: user.userId, role: user.role });
+    return await this.customerService.findAll(queryDto, {
+      userId: user.userId,
+      role: user.role,
+    });
   }
 
   @Get('search/email/:email')
@@ -176,9 +179,15 @@ export class CustomerController {
     status: HttpStatus.UNAUTHORIZED,
     description: '未授权',
   })
-  async findOne(@Param('id') id: string, @CurrentUser() user: any): Promise<Customer> {
+  async findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+  ): Promise<Customer> {
     this.logger.log(`Finding customer by ID: ${id}`);
-    return await this.customerService.findOne(id, { userId: user.userId, role: user.role });
+    return await this.customerService.findOne(id, {
+      userId: user.userId,
+      role: user.role,
+    });
   }
 
   @Put(':id')
@@ -216,7 +225,10 @@ export class CustomerController {
     @CurrentUser() user: any,
   ): Promise<Customer> {
     this.logger.log(`Updating customer with ID: ${id}`);
-    return await this.customerService.update(id, updateCustomerDto, { userId: user.userId, role: user.role });
+    return await this.customerService.update(id, updateCustomerDto, {
+      userId: user.userId,
+      role: user.role,
+    });
   }
 
   @Delete(':id')
@@ -248,7 +260,10 @@ export class CustomerController {
     @CurrentUser() user: any,
   ): Promise<{ message: string }> {
     this.logger.log(`Deleting customer with ID: ${id}`);
-    return await this.customerService.remove(id, { userId: user.userId, role: user.role });
+    return await this.customerService.remove(id, {
+      userId: user.userId,
+      role: user.role,
+    });
   }
 
   @Get('export')
@@ -275,12 +290,18 @@ export class CustomerController {
     status: HttpStatus.UNAUTHORIZED,
     description: '未授权',
   })
-  async exportCustomers(@Res() res: Response, @CurrentUser() user: any): Promise<void> {
+  async exportCustomers(
+    @Res() res: Response,
+    @CurrentUser() user: any,
+  ): Promise<void> {
     this.logger.log('Exporting customers to Excel');
 
     try {
       // 获取所有客户数据
-      const customers = await this.customerService.getAllCustomersForExport({ userId: user.userId, role: user.role });
+      const customers = await this.customerService.getAllCustomersForExport({
+        userId: user.userId,
+        role: user.role,
+      });
 
       // 生成Excel文件
       const excelBuffer =
@@ -349,6 +370,9 @@ export class CustomerController {
       throw new BadRequestException('请选择要上传的Excel文件');
     }
 
-    return await this.customerService.importCustomersFromExcel(file, user.userId);
+    return await this.customerService.importCustomersFromExcel(
+      file,
+      user.userId,
+    );
   }
 }

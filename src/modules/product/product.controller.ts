@@ -60,7 +60,10 @@ export class ProductController {
     @Query() query: QueryProductDto,
     @CurrentUser() user: any,
   ): Promise<ProductListResponse> {
-    return this.productService.findAll(query, { userId: user.userId, role: user.role });
+    return this.productService.findAll(query, {
+      userId: user.userId,
+      role: user.role,
+    });
   }
 
   @Get(':id')
@@ -68,7 +71,10 @@ export class ProductController {
   @ApiOperation({ summary: '获取产品详情' })
   @ApiParam({ name: 'id', description: '产品ID' })
   findOne(@Param('id') id: string, @CurrentUser() user: any): Promise<Product> {
-    return this.productService.findOne(id, { userId: user.userId, role: user.role });
+    return this.productService.findOne(id, {
+      userId: user.userId,
+      role: user.role,
+    });
   }
 
   @Put(':id')
@@ -80,7 +86,10 @@ export class ProductController {
     @Body() dto: UpdateProductDto,
     @CurrentUser() user: any,
   ): Promise<Product> {
-    return this.productService.update(id, dto, { userId: user.userId, role: user.role });
+    return this.productService.update(id, dto, {
+      userId: user.userId,
+      role: user.role,
+    });
   }
 
   @Delete(':id')
@@ -88,14 +97,20 @@ export class ProductController {
   @ApiOperation({ summary: '删除产品' })
   @ApiParam({ name: 'id', description: '产品ID' })
   remove(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.productService.remove(id, { userId: user.userId, role: user.role });
+    return this.productService.remove(id, {
+      userId: user.userId,
+      role: user.role,
+    });
   }
 
   @Get('export')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: '导出产品数据为Excel' })
   async export(@Res() res: Response, @CurrentUser() user: any) {
-    const products = await this.productService.getAllForExport({ userId: user.userId, role: user.role });
+    const products = await this.productService.getAllForExport({
+      userId: user.userId,
+      role: user.role,
+    });
     const buf = await this.productService.generateExcelBuffer(products);
     const filename = `products_${new Date().toISOString().split('T')[0]}.xlsx`;
     res.setHeader(
