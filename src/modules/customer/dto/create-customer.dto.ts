@@ -45,6 +45,10 @@ export class CreateCustomerDto {
   @IsString({ message: '登录密码必须是字符串' })
   @IsOptional()
   @MinLength(8, { message: '登录密码至少需要8个字符' })
+  @Matches(/(?=.*[a-z])/, { message: '登录密码需至少包含一个小写字母' })
+  @Matches(/(?=.*[A-Z])/, { message: '登录密码需至少包含一个大写字母' })
+  @Matches(/(?=.*\d)/, { message: '登录密码需至少包含一个数字' })
+  @Matches(/(?=.*[@$!%*?&])/, { message: '登录密码需至少包含一个特殊字符(@$!%*?&)' })
   password?: string;
 
   @ApiProperty({

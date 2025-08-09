@@ -26,6 +26,27 @@ export class AuthService {
     private dynamodbService: DynamodbService,
   ) {}
 
+  private translateCognitoPasswordError(error: any): string {
+    const message = (error && (error.message || error.toString())) || '';
+    // 基于 Cognito 返回的英文错误文案做映射
+    if (/numeric/i.test(message) || /(\bdigit\b|\bnumbers?\b)/i.test(message)) {
+      return '密码不符合安全策略：需包含数字';
+    }
+    if (/uppercase/i.test(message)) {
+      return '密码不符合安全策略：需包含大写字母';
+    }
+    if (/lowercase/i.test(message)) {
+      return '密码不符合安全策略：需包含小写字母';
+    }
+    if (/special character|symbol/i.test(message)) {
+      return '密码不符合安全策略：需包含特殊字符';
+    }
+    if (/length|short/i.test(message)) {
+      return '密码不符合安全策略：长度不满足要求';
+    }
+    return '密码不符合安全策略';
+  }
+
   private isEmailFormat(username: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(username);
@@ -152,7 +173,7 @@ export class AuthService {
       }
 
       if (error.name === 'InvalidPasswordException') {
-        throw new BadRequestException('Password does not meet requirements');
+        throw new BadRequestException(this.translateCognitoPasswordError(error));
       }
 
       if (error.name === 'InvalidParameterException') {
@@ -211,7 +232,37 @@ export class AuthService {
         `Failed to create customer account: ${username}`,
         error,
       );
+      const name = (error && (error.name || (error as any).__type)) || '';
+      if (name === 'InvalidPasswordException') {
+        throw new BadRequestException(this.translateCognitoPasswordError(error));
+      }
+      if (name === 'UsernameExistsException') {
+        throw new ConflictException('用户名已存在');
+      }
+      if (name === 'InvalidParameterException') {
+        throw new BadRequestException('注册参数无效');
+      }
       throw new BadRequestException('创建客户账号失败');
+    }
+  }
+
+  async deleteCustomerAccount(username: string) {
+    this.logger.warn(`Rolling back customer account for username: ${username}`);
+    try {
+      await this.cognitoService.deleteUser(username);
+    } catch (err) {
+      this.logger.warn(
+        `Rollback warning: failed to delete Cognito user ${username}`,
+        err,
+      );
+    }
+    try {
+      await this.dynamodbService.delete('users', { userId: username });
+    } catch (err) {
+      this.logger.warn(
+        `Rollback warning: failed to delete user record ${username}`,
+        err,
+      );
     }
   }
 

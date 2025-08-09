@@ -5,6 +5,7 @@ import {
   BadRequestException,
   Logger,
   UnsupportedMediaTypeException,
+  HttpException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DynamodbService } from '../../database/dynamodb.service';
@@ -65,8 +66,7 @@ export class CustomerService {
     };
 
     try {
-      await this.dynamodbService.put(this.tableName, customer);
-
+      // 先创建登录账号（若提供了账号密码），再写入客户记录，避免脏数据
       if (username && password) {
         await this.authService.registerCustomerAccount(
           username,
@@ -78,13 +78,28 @@ export class CustomerService {
         );
       }
 
+      await this.dynamodbService.put(this.tableName, customer);
+
       this.logger.log(`Customer created successfully with ID: ${customerId}`);
       return customer;
     } catch (error) {
+      // 若账号已创建而客户落库失败，执行回滚
+      if (username && password) {
+        try {
+          await this.authService.deleteCustomerAccount(username);
+        } catch (_) {
+          // 已在下层记录警告日志
+        }
+      }
+
       this.logger.error(
         `Failed to create customer: ${error.message}`,
-        error.stack,
+        (error as any)?.stack,
       );
+      // 透传已规范化的业务异常，否则统一为 400
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new BadRequestException('创建客户失败');
     }
   }
