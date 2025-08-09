@@ -48,7 +48,9 @@ export class CreateCustomerDto {
   @Matches(/(?=.*[a-z])/, { message: '登录密码需至少包含一个小写字母' })
   @Matches(/(?=.*[A-Z])/, { message: '登录密码需至少包含一个大写字母' })
   @Matches(/(?=.*\d)/, { message: '登录密码需至少包含一个数字' })
-  @Matches(/(?=.*[@$!%*?&])/, { message: '登录密码需至少包含一个特殊字符(@$!%*?&)' })
+  @Matches(/(?=.*[@$!%*?&])/, {
+    message: '登录密码需至少包含一个特殊字符(@$!%*?&)',
+  })
   password?: string;
 
   @ApiProperty({

@@ -173,7 +173,9 @@ export class AuthService {
       }
 
       if (error.name === 'InvalidPasswordException') {
-        throw new BadRequestException(this.translateCognitoPasswordError(error));
+        throw new BadRequestException(
+          this.translateCognitoPasswordError(error),
+        );
       }
 
       if (error.name === 'InvalidParameterException') {
@@ -234,7 +236,9 @@ export class AuthService {
       );
       const name = (error && (error.name || (error as any).__type)) || '';
       if (name === 'InvalidPasswordException') {
-        throw new BadRequestException(this.translateCognitoPasswordError(error));
+        throw new BadRequestException(
+          this.translateCognitoPasswordError(error),
+        );
       }
       if (name === 'UsernameExistsException') {
         throw new ConflictException('用户名已存在');
