@@ -5,7 +5,6 @@ import {
   Body,
   Put,
   Param,
-  Delete,
   Query,
   UseGuards,
   HttpStatus,
@@ -226,41 +225,6 @@ export class CustomerController {
   ): Promise<Customer> {
     this.logger.log(`Updating customer with ID: ${id}`);
     return await this.customerService.update(id, updateCustomerDto, {
-      userId: user.userId,
-      role: user.role,
-    });
-  }
-
-  @Delete(':id')
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
-  @ApiOperation({ summary: '删除客户' })
-  @ApiParam({
-    name: 'id',
-    description: '客户ID',
-    example: 'cust_1234567890',
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: '客户删除成功',
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: '客户不存在',
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: '未授权',
-  })
-  @ApiResponse({
-    status: HttpStatus.FORBIDDEN,
-    description: '权限不足',
-  })
-  async remove(
-    @Param('id') id: string,
-    @CurrentUser() user: any,
-  ): Promise<{ message: string }> {
-    this.logger.log(`Deleting customer with ID: ${id}`);
-    return await this.customerService.remove(id, {
       userId: user.userId,
       role: user.role,
     });
