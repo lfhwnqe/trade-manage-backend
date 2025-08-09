@@ -326,6 +326,7 @@ export class TradeManageStack extends cdk.Stack {
       environment: {
         // Application Configuration
         NODE_ENV: environment === 'prod' ? 'production' : 'development',
+        SWAGGER_ENABLED: environment === 'prod' ? 'false' : 'true',
         PORT: '3000',
         APP_NAME: 'trade-manage-backend',
 
@@ -462,6 +463,7 @@ export class TradeManageStack extends cdk.Stack {
       ``,
       `# API Configuration`,
       `API_PREFIX=api/v1`,
+      `SWAGGER_ENABLED=${environment === 'prod' ? 'false' : 'true'}`,
       `SWAGGER_TITLE=Trade Management API`,
       `SWAGGER_DESCRIPTION=API for Trade Management System`,
       `SWAGGER_VERSION=1.0.0`,

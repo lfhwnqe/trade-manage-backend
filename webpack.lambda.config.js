@@ -29,8 +29,9 @@ module.exports = {
       },
     ],
   },
-  // 仅保留 swagger-ui-dist 为 external，以便在运行时读取其静态目录
-  externals: ['swagger-ui-dist'],
+  // 将 swagger-ui-dist 整个包（含其子路径）external 化，确保
+  // require('swagger-ui-dist/absolute-path.js') 在运行时从 node_modules 解析
+  externals: [/^swagger-ui-dist(\/.*)?$/],
   plugins: [
     // 忽略 Nest 可选依赖，避免打包时报错
     new webpack.IgnorePlugin({ resourceRegExp: /^@nestjs\/microservices$/ }),

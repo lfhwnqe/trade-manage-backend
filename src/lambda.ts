@@ -1,6 +1,5 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import {
   APIGatewayProxyEvent,
@@ -58,8 +57,9 @@ async function createNestApp() {
     new TransformInterceptor(),
   );
 
-  // Swagger configuration
-  if (configService.get<string>('NODE_ENV') !== 'production') {
+  // Swagger configuration (only when explicitly enabled)
+  if (configService.get<string>('SWAGGER_ENABLED') === 'true') {
+    const { SwaggerModule, DocumentBuilder } = await import('@nestjs/swagger');
     const config = new DocumentBuilder()
       .setTitle(
         configService.get<string>('SWAGGER_TITLE', 'Trade Management API'),
@@ -86,6 +86,8 @@ async function createNestApp() {
 
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup(`${apiPrefix}/docs`, app, document, {
+      // 关键：使用相对路径，避免 API Gateway stage（/dev）导致的绝对路径丢失
+      swaggerUrl: './docs-json',
       swaggerOptions: {
         persistAuthorization: true,
       },
