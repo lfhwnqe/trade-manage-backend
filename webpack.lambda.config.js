@@ -1,4 +1,5 @@
 const path = require('path');
+const webpack = require('webpack');
 
 module.exports = {
   mode: 'production',
@@ -11,6 +12,13 @@ module.exports = {
   },
   resolve: {
     extensions: ['.ts', '.js'],
+    // 可按需添加 alias 来屏蔽未使用的模块
+    alias: {
+      // 本项目未使用 microservices/websockets，忽略其解析
+      '@nestjs/microservices': false,
+      '@nestjs/websockets/socket-module': false,
+      '@nestjs/websockets': false,
+    },
   },
   module: {
     rules: [
@@ -21,29 +29,14 @@ module.exports = {
       },
     ],
   },
-  externals: [
-    // Mark all node_modules as external to reduce bundle size
-    /^@nestjs\//,
-    /^@aws-sdk\//,
-    /^aws-sdk/,
-    'aws-lambda',
-    '@vendia/serverless-express',
-    'helmet',
-    'compression',
-    'cors',
-    'bcryptjs',
-    'express',
-    'multer',
-    'passport',
-    'passport-jwt',
-    'passport-local',
-    'jsonwebtoken',
-    'uuid',
-    'class-validator',
-    'class-transformer',
-    'reflect-metadata',
-    'rxjs',
-    'dotenv',
-    'swagger-ui-dist',
+  // 仅保留 swagger-ui-dist 为 external，以便在运行时读取其静态目录
+  externals: ['swagger-ui-dist'],
+  plugins: [
+    // 忽略 Nest 可选依赖，避免打包时报错
+    new webpack.IgnorePlugin({ resourceRegExp: /^@nestjs\/microservices$/ }),
+    new webpack.IgnorePlugin({ resourceRegExp: /^@nestjs\/websockets$/ }),
+    new webpack.IgnorePlugin({ resourceRegExp: /^@nestjs\/websockets\/socket-module$/ }),
+    // class-transformer/storage 在某些路径被可选引用，若未用到可忽略
+    new webpack.IgnorePlugin({ resourceRegExp: /^class-transformer\/storage$/ }),
   ],
 };

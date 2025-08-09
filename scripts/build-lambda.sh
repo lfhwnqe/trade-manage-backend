@@ -13,56 +13,25 @@ rm -rf lambda-package
 echo "📁 Creating Lambda package directory..."
 mkdir -p lambda-package
 
-# Build the application to temporary build directory
-echo "📦 Building NestJS application for Lambda..."
-# Use a temporary build directory to avoid affecting development dist
-TEMP_BUILD_DIR="lambda-temp-build"
-rm -rf $TEMP_BUILD_DIR
-
-# Build with TypeScript compiler directly
-echo "🔨 Compiling TypeScript files..."
-npx tsc -p tsconfig.lambda.json
-
-# Build lambda handler directly to lambda-package
-echo "📦 Building Lambda handler..."
+echo "📦 Building Lambda bundle (webpack)..."
 npx webpack --config webpack.lambda.config.js
 
-# Copy built NestJS files to lambda-package
-echo "📋 Copying built NestJS files..."
-cp -r $TEMP_BUILD_DIR/* lambda-package/
+# 仅复制 swagger-ui-dist 静态资源（其被 external 化）
+echo "📦 Adding swagger-ui-dist assets..."
+mkdir -p lambda-package/node_modules
+cp -R node_modules/swagger-ui-dist lambda-package/node_modules/swagger-ui-dist
 
-# Clean up temporary build directory
-echo "🧹 Cleaning up temporary build files..."
-rm -rf $TEMP_BUILD_DIR
-
-# Copy package.json and install production dependencies
-echo "📦 Installing production dependencies..."
-cp package.json lambda-package/
-cd lambda-package
-
-# Install only production dependencies
-npm install --only=production --no-package-lock --legacy-peer-deps
-
-# Remove unnecessary files to reduce package size
+# 清理无关文件，减小体积
 echo "🗑️  Removing unnecessary files..."
-find . -name "*.map" -delete
-find . -name "*.ts" -delete
-find . -name "test" -type d -exec rm -rf {} + 2>/dev/null || true
-find . -name "tests" -type d -exec rm -rf {} + 2>/dev/null || true
-find . -name "*.test.js" -delete
-find . -name "*.spec.js" -delete
+find lambda-package -name "*.map" -delete || true
+find lambda-package -name "*.ts" -delete || true
+find lambda-package -name "test" -type d -exec rm -rf {} + 2>/dev/null || true
+find lambda-package -name "tests" -type d -exec rm -rf {} + 2>/dev/null || true
+find lambda-package -name "*.test.js" -delete || true
+find lambda-package -name "*.spec.js" -delete || true
 
-# Remove dev dependencies that might have been installed
-rm -rf node_modules/@types
-rm -rf node_modules/typescript
-rm -rf node_modules/ts-node
-rm -rf node_modules/jest
-rm -rf node_modules/@jest
-rm -rf node_modules/eslint
-rm -rf node_modules/@typescript-eslint
-rm -rf node_modules/prettier
-
-cd ..
+# 移除常见 dev 依赖
+# 由于只复制了 swagger-ui-dist，此处无需删除 node_modules 中的 dev 依赖
 
 echo "✅ Lambda package built successfully in lambda-package/"
 echo "📊 Package size:"
