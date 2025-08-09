@@ -80,7 +80,7 @@ export class AuthService {
       username: user.username,
       sub: user.userId,
       email: user.email,
-      role: user.role || 'user',
+      role: user.role || 'admin',
     };
 
     return {
@@ -89,7 +89,7 @@ export class AuthService {
         userId: user.userId,
         username: user.username,
         email: user.email,
-        role: user.role || 'user',
+        role: user.role || 'admin',
       },
     };
   }
@@ -145,7 +145,7 @@ export class AuthService {
         password: hashedPassword,
         firstName,
         lastName,
-        role: 'user',
+        role: 'admin',
         emailVerified: false,
         status: 'pending_verification', // 用户状态为待验证
         cognitoUserSub: cognitoResult.UserSub, // 存储Cognito用户ID

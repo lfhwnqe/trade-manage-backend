@@ -44,7 +44,10 @@ export class CustomerService {
   /**
    * 创建新客户
    */
-  async create(createCustomerDto: CreateCustomerDto): Promise<Customer> {
+  async create(
+    createCustomerDto: CreateCustomerDto,
+    createdBy: string,
+  ): Promise<Customer> {
     this.logger.log(
       `Creating new customer with email: ${createCustomerDto.email}`,
     );
@@ -63,6 +66,7 @@ export class CustomerService {
       status: createCustomerDto.status || CustomerStatus.ACTIVE,
       createdAt: now,
       updatedAt: now,
+      createdBy,
     };
 
     try {
@@ -107,7 +111,10 @@ export class CustomerService {
   /**
    * 获取客户列表（支持分页和筛选）
    */
-  async findAll(queryDto: QueryCustomerDto): Promise<CustomerListResponse> {
+  async findAll(
+    queryDto: QueryCustomerDto,
+    currentUser: { userId: string; role: string },
+  ): Promise<CustomerListResponse> {
     this.logger.log(
       `Querying customers with filters: ${JSON.stringify(queryDto)}`,
     );
@@ -146,12 +153,23 @@ export class CustomerService {
           queryDto.endDate + 'T23:59:59.999Z';
       }
 
+      // 非超级管理员仅能查看自己创建的资源
+      if ((currentUser?.role || 'user') !== 'super_admin') {
+        if (filterExpression) filterExpression += ' AND ';
+        filterExpression += '#createdBy = :createdBy';
+        expressionAttributeNames['#createdBy'] = 'createdBy';
+        expressionAttributeValues[':createdBy'] = currentUser.userId;
+      }
+
       // 执行扫描查询
       const allItems = await this.dynamodbService.scan(
         this.tableName,
         filterExpression || undefined,
         Object.keys(expressionAttributeValues).length > 0
           ? expressionAttributeValues
+          : undefined,
+        Object.keys(expressionAttributeNames).length > 0
+          ? expressionAttributeNames
           : undefined,
       );
 
@@ -211,7 +229,10 @@ export class CustomerService {
   /**
    * 根据ID获取单个客户
    */
-  async findOne(customerId: string): Promise<Customer> {
+  async findOne(
+    customerId: string,
+    currentUser?: { userId: string; role: string },
+  ): Promise<Customer> {
     this.logger.log(`Finding customer with ID: ${customerId}`);
 
     try {
@@ -222,6 +243,13 @@ export class CustomerService {
       if (!customer) {
         this.logger.warn(`Customer not found with ID: ${customerId}`);
         throw new NotFoundException('客户不存在');
+      }
+
+      if (currentUser && currentUser.role !== 'super_admin') {
+        if (customer.createdBy && customer.createdBy !== currentUser.userId) {
+          this.logger.warn(`Customer not found with ID: ${customerId}`);
+          throw new NotFoundException('客户不存在');
+        }
       }
 
       this.logger.log(`Customer found: ${customerId}`);
@@ -310,11 +338,12 @@ export class CustomerService {
   async update(
     customerId: string,
     updateCustomerDto: UpdateCustomerDto,
+    currentUser: { userId: string; role: string },
   ): Promise<Customer> {
     this.logger.log(`Updating customer with ID: ${customerId}`);
 
     // 检查客户是否存在
-    const existingCustomer = await this.findOne(customerId);
+    const existingCustomer = await this.findOne(customerId, currentUser);
 
     // 如果更新邮箱，检查新邮箱是否已被其他客户使用
     if (
@@ -371,11 +400,14 @@ export class CustomerService {
   /**
    * 删除客户
    */
-  async remove(customerId: string): Promise<{ message: string }> {
+  async remove(
+    customerId: string,
+    currentUser: { userId: string; role: string },
+  ): Promise<{ message: string }> {
     this.logger.log(`Deleting customer with ID: ${customerId}`);
 
     // 检查客户是否存在
-    await this.findOne(customerId);
+    await this.findOne(customerId, currentUser);
 
     try {
       await this.dynamodbService.delete(this.tableName, { customerId });
@@ -465,20 +497,23 @@ export class CustomerService {
   /**
    * 获取所有客户数据用于导出
    */
-  async getAllCustomersForExport(): Promise<Customer[]> {
+  async getAllCustomersForExport(currentUser: { userId: string; role: string }): Promise<Customer[]> {
     this.logger.log('Getting all customers for export');
 
     try {
       const allCustomers = await this.dynamodbService.scan(this.tableName);
+      const filtered = (currentUser.role === 'super_admin')
+        ? allCustomers
+        : allCustomers.filter((c) => c.createdBy === currentUser.userId);
 
       // 按创建时间排序
-      allCustomers.sort(
+      filtered.sort(
         (a, b) =>
           new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
       );
 
-      this.logger.log(`Retrieved ${allCustomers.length} customers for export`);
-      return allCustomers;
+      this.logger.log(`Retrieved ${filtered.length} customers for export`);
+      return filtered;
     } catch (error) {
       this.logger.error(
         `Failed to get customers for export: ${error.message}`,
@@ -563,6 +598,7 @@ export class CustomerService {
    */
   async importCustomersFromExcel(
     file: Express.Multer.File,
+    createdBy: string,
   ): Promise<ImportResultDto> {
     if (!file) {
       throw new BadRequestException('未提供文件');
@@ -632,7 +668,7 @@ export class CustomerService {
             address: data.address,
             riskLevel: data.riskLevel as RiskLevel,
             status: data.status as CustomerStatus,
-          });
+          }, createdBy);
 
           successCount++;
         } catch (error) {

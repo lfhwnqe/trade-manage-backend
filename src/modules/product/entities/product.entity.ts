@@ -71,4 +71,7 @@ export class Product {
 
   @ApiProperty({ description: '更新时间', example: '2024-01-01T00:00:00.000Z' })
   updatedAt: string;
+
+  @ApiProperty({ description: '创建者用户ID', example: 'user_123' })
+  createdBy: string;
 }

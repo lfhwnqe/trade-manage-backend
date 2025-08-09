@@ -102,6 +102,13 @@ export class Customer {
   updatedAt: string;
 
   @ApiProperty({
+    description: '创建者用户ID',
+    example: 'user_123',
+    required: false,
+  })
+  createdBy?: string;
+
+  @ApiProperty({
     description: '备注信息',
     example: '重要客户，需要特别关注',
     required: false,

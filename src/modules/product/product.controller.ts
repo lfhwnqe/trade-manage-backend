@@ -33,6 +33,7 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { QueryProductDto, ProductListResponse } from './dto/query-product.dto';
 import { ImportResultDto } from './dto/import-result.dto';
 import { Product } from './entities/product.entity';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('Products')
 @ApiBearerAuth('JWT-auth')
@@ -44,24 +45,30 @@ export class ProductController {
   @Post()
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: '创建产品' })
-  create(@Body() dto: CreateProductDto): Promise<Product> {
-    return this.productService.create(dto);
+  create(
+    @Body() dto: CreateProductDto,
+    @CurrentUser() user: any,
+  ): Promise<Product> {
+    return this.productService.create(dto, user.userId);
   }
 
   @Get()
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.USER)
   @ApiOperation({ summary: '获取产品列表' })
   @ApiQuery({ name: 'page', required: false })
-  findAll(@Query() query: QueryProductDto): Promise<ProductListResponse> {
-    return this.productService.findAll(query);
+  findAll(
+    @Query() query: QueryProductDto,
+    @CurrentUser() user: any,
+  ): Promise<ProductListResponse> {
+    return this.productService.findAll(query, { userId: user.userId, role: user.role });
   }
 
   @Get(':id')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.USER)
   @ApiOperation({ summary: '获取产品详情' })
   @ApiParam({ name: 'id', description: '产品ID' })
-  findOne(@Param('id') id: string): Promise<Product> {
-    return this.productService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() user: any): Promise<Product> {
+    return this.productService.findOne(id, { userId: user.userId, role: user.role });
   }
 
   @Put(':id')
@@ -71,23 +78,24 @@ export class ProductController {
   update(
     @Param('id') id: string,
     @Body() dto: UpdateProductDto,
+    @CurrentUser() user: any,
   ): Promise<Product> {
-    return this.productService.update(id, dto);
+    return this.productService.update(id, dto, { userId: user.userId, role: user.role });
   }
 
   @Delete(':id')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: '删除产品' })
   @ApiParam({ name: 'id', description: '产品ID' })
-  remove(@Param('id') id: string) {
-    return this.productService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.productService.remove(id, { userId: user.userId, role: user.role });
   }
 
   @Get('export')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: '导出产品数据为Excel' })
-  async export(@Res() res: Response) {
-    const products = await this.productService.getAllForExport();
+  async export(@Res() res: Response, @CurrentUser() user: any) {
+    const products = await this.productService.getAllForExport({ userId: user.userId, role: user.role });
     const buf = await this.productService.generateExcelBuffer(products);
     const filename = `products_${new Date().toISOString().split('T')[0]}.xlsx`;
     res.setHeader(
@@ -106,8 +114,9 @@ export class ProductController {
   @ApiOperation({ summary: '从Excel导入产品数据' })
   async import(
     @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: any,
   ): Promise<ImportResultDto> {
     if (!file) throw new BadRequestException('请选择要上传的Excel文件');
-    return this.productService.importFromExcel(file);
+    return this.productService.importFromExcel(file, user.userId);
   }
 }

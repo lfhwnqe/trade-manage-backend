@@ -78,11 +78,13 @@ export class DynamodbService {
     tableName: string,
     filterExpression?: string,
     expressionAttributeValues?: any,
+    expressionAttributeNames?: Record<string, string>,
   ): Promise<any[]> {
     const command = new ScanCommand({
       TableName: this.getTableName(tableName),
       FilterExpression: filterExpression,
       ExpressionAttributeValues: expressionAttributeValues,
+      ExpressionAttributeNames: expressionAttributeNames,
     });
     const result = await this.dynamoClient.send(command);
     return result.Items || [];

@@ -28,7 +28,7 @@ export class ProductService {
     this.tableName = this.configService.get<string>('database.tables.products');
   }
 
-  async create(createDto: CreateProductDto): Promise<Product> {
+  async create(createDto: CreateProductDto, createdBy: string): Promise<Product> {
     const now = new Date().toISOString();
     const productId = `prod_${uuidv4()}`;
 
@@ -38,16 +38,24 @@ export class ProductService {
       status: createDto.status || ProductStatus.ACTIVE,
       createdAt: now,
       updatedAt: now,
+      createdBy,
     };
 
     await this.dynamodbService.put(this.tableName, product);
     return product;
   }
 
-  async findAll(query: QueryProductDto): Promise<ProductListResponse> {
+  async findAll(
+    query: QueryProductDto,
+    currentUser: { userId: string; role: string },
+  ): Promise<ProductListResponse> {
     const all = await this.dynamodbService.scan(this.tableName);
 
     let items = all;
+    // 非超级管理员仅能查看自己创建的资源
+    if ((currentUser?.role || 'user') !== 'super_admin') {
+      items = items.filter((p) => p.createdBy === currentUser?.userId);
+    }
     if (query.search) {
       const term = query.search.toLowerCase();
       items = items.filter((p) => p.productName.toLowerCase().includes(term));
@@ -76,19 +84,32 @@ export class ProductService {
     return { data, total, page: query.page, limit: query.limit, totalPages };
   }
 
-  async findOne(productId: string): Promise<Product> {
+  async findOne(
+    productId: string,
+    currentUser?: { userId: string; role: string },
+  ): Promise<Product> {
     const product = await this.dynamodbService.get(this.tableName, {
       productId,
     });
     if (!product) throw new NotFoundException('产品不存在');
+    // 详情访问控制：非超级管理员仅能访问自己资源
+    if (currentUser && currentUser.role !== 'super_admin') {
+      if (product.createdBy && product.createdBy !== currentUser.userId) {
+        throw new NotFoundException('产品不存在');
+      }
+    }
     return product;
   }
 
   async update(
     productId: string,
     updateDto: UpdateProductDto,
+    currentUser: { userId: string; role: string },
   ): Promise<Product> {
-    await this.findOne(productId);
+    const existing = await this.findOne(productId);
+    if (currentUser.role !== 'super_admin' && existing.createdBy !== currentUser.userId) {
+      throw new NotFoundException('产品不存在');
+    }
 
     if (updateDto.productId && updateDto.productId !== productId) {
       throw new BadRequestException('产品ID与参数不一致');
@@ -119,19 +140,28 @@ export class ProductService {
     return updated;
   }
 
-  async remove(productId: string): Promise<{ message: string }> {
-    await this.findOne(productId);
+  async remove(
+    productId: string,
+    currentUser: { userId: string; role: string },
+  ): Promise<{ message: string }> {
+    const existing = await this.findOne(productId);
+    if (currentUser.role !== 'super_admin' && existing.createdBy !== currentUser.userId) {
+      throw new NotFoundException('产品不存在');
+    }
     await this.dynamodbService.delete(this.tableName, { productId });
     return { message: '产品删除成功' };
   }
 
-  async getAllForExport(): Promise<Product[]> {
+  async getAllForExport(currentUser: { userId: string; role: string }): Promise<Product[]> {
     const items = await this.dynamodbService.scan(this.tableName);
-    items.sort(
+    const filtered = (currentUser.role === 'super_admin')
+      ? items
+      : items.filter((p) => p.createdBy === currentUser.userId);
+    filtered.sort(
       (a, b) =>
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     );
-    return items;
+    return filtered;
   }
 
   async generateExcelBuffer(products: Product[]): Promise<Buffer> {
@@ -160,7 +190,10 @@ export class ProductService {
     return Buffer.from(buffer);
   }
 
-  async importFromExcel(file: Express.Multer.File): Promise<ImportResultDto> {
+  async importFromExcel(
+    file: Express.Multer.File,
+    createdBy: string,
+  ): Promise<ImportResultDto> {
     if (!file.originalname.endsWith('.xlsx')) {
       throw new UnsupportedMediaTypeException('仅支持xlsx格式');
     }
@@ -195,7 +228,7 @@ export class ProductService {
 
     for (const item of rows) {
       try {
-        await this.create(item.data);
+        await this.create(item.data, createdBy);
         successCount++;
       } catch (e) {
         errors.push({ row: item.rowNumber, error: e.message, data: item.data });

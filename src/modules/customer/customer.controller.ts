@@ -26,6 +26,7 @@ import {
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 import { CustomerService } from './customer.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
@@ -70,9 +71,10 @@ export class CustomerController {
   })
   async create(
     @Body() createCustomerDto: CreateCustomerDto,
+    @CurrentUser('userId') userId: string,
   ): Promise<Customer> {
     this.logger.log(`Creating customer with email: ${createCustomerDto.email}`);
-    return await this.customerService.create(createCustomerDto);
+    return await this.customerService.create(createCustomerDto, userId);
   }
 
   @Get()
@@ -93,11 +95,12 @@ export class CustomerController {
   })
   async findAll(
     @Query() queryDto: QueryCustomerDto,
+    @CurrentUser() user: any,
   ): Promise<CustomerListResponse> {
     this.logger.log(
       `Querying customers with params: ${JSON.stringify(queryDto)}`,
     );
-    return await this.customerService.findAll(queryDto);
+    return await this.customerService.findAll(queryDto, { userId: user.userId, role: user.role });
   }
 
   @Get('search/email/:email')
@@ -173,9 +176,9 @@ export class CustomerController {
     status: HttpStatus.UNAUTHORIZED,
     description: '未授权',
   })
-  async findOne(@Param('id') id: string): Promise<Customer> {
+  async findOne(@Param('id') id: string, @CurrentUser() user: any): Promise<Customer> {
     this.logger.log(`Finding customer by ID: ${id}`);
-    return await this.customerService.findOne(id);
+    return await this.customerService.findOne(id, { userId: user.userId, role: user.role });
   }
 
   @Put(':id')
@@ -210,9 +213,10 @@ export class CustomerController {
   async update(
     @Param('id') id: string,
     @Body() updateCustomerDto: UpdateCustomerDto,
+    @CurrentUser() user: any,
   ): Promise<Customer> {
     this.logger.log(`Updating customer with ID: ${id}`);
-    return await this.customerService.update(id, updateCustomerDto);
+    return await this.customerService.update(id, updateCustomerDto, { userId: user.userId, role: user.role });
   }
 
   @Delete(':id')
@@ -239,9 +243,12 @@ export class CustomerController {
     status: HttpStatus.FORBIDDEN,
     description: '权限不足',
   })
-  async remove(@Param('id') id: string): Promise<{ message: string }> {
+  async remove(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+  ): Promise<{ message: string }> {
     this.logger.log(`Deleting customer with ID: ${id}`);
-    return await this.customerService.remove(id);
+    return await this.customerService.remove(id, { userId: user.userId, role: user.role });
   }
 
   @Get('export')
@@ -268,12 +275,12 @@ export class CustomerController {
     status: HttpStatus.UNAUTHORIZED,
     description: '未授权',
   })
-  async exportCustomers(@Res() res: Response): Promise<void> {
+  async exportCustomers(@Res() res: Response, @CurrentUser() user: any): Promise<void> {
     this.logger.log('Exporting customers to Excel');
 
     try {
       // 获取所有客户数据
-      const customers = await this.customerService.getAllCustomersForExport();
+      const customers = await this.customerService.getAllCustomersForExport({ userId: user.userId, role: user.role });
 
       // 生成Excel文件
       const excelBuffer =
@@ -332,6 +339,7 @@ export class CustomerController {
   })
   async importCustomers(
     @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: any,
   ): Promise<ImportResultDto> {
     this.logger.log(
       `Importing customers from file: ${file?.originalname || 'unknown'}`,
@@ -341,6 +349,6 @@ export class CustomerController {
       throw new BadRequestException('请选择要上传的Excel文件');
     }
 
-    return await this.customerService.importCustomersFromExcel(file);
+    return await this.customerService.importCustomersFromExcel(file, user.userId);
   }
 }
