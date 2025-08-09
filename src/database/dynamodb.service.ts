@@ -20,6 +20,13 @@ export class DynamodbService {
 
   private getTableName(tableName: string): string {
     const prefix = this.configService.get<string>('dynamodb.tablePrefix');
+    // 如果传入的是完整表名（通常来自环境变量，如 trade-manage-dev-customers），不要再次添加前缀
+    if (!prefix) return tableName;
+    if (tableName.startsWith(`${prefix}-`)) return tableName;
+    // 简单的启发式：包含连字符且已像完整表名，直接返回
+    if (tableName.includes('-') && tableName.startsWith('trade-manage-')) {
+      return tableName;
+    }
     return `${prefix}-${tableName}`;
   }
 

@@ -12,7 +12,10 @@ import { DynamodbService } from './dynamodb.service';
     {
       provide: 'DYNAMODB_CLIENT',
       useFactory: (configService: ConfigService) => {
-        const region = configService.get<string>('aws.region');
+        // 优先使用 DynamoDB 专用 region，其次回退到全局 AWS region
+        const region =
+          configService.get<string>('dynamodb.region') ||
+          configService.get<string>('aws.region');
 
         // AWS SDK will automatically use:
         // - Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY) for local development
