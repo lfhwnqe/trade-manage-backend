@@ -126,9 +126,15 @@ export class CustomerController {
     status: HttpStatus.UNAUTHORIZED,
     description: '未授权',
   })
-  async findByEmail(@Param('email') email: string): Promise<Customer> {
+  async findByEmail(
+    @Param('email') email: string,
+    @CurrentUser() user: any,
+  ): Promise<Customer> {
     this.logger.log(`Finding customer by email: ${email}`);
-    return await this.customerService.findByEmail(email);
+    return await this.customerService.findByEmail(email, {
+      userId: user.userId,
+      role: user.role,
+    });
   }
 
   @Get('search/phone/:phone')
@@ -152,9 +158,15 @@ export class CustomerController {
     status: HttpStatus.UNAUTHORIZED,
     description: '未授权',
   })
-  async findByPhone(@Param('phone') phone: string): Promise<Customer> {
+  async findByPhone(
+    @Param('phone') phone: string,
+    @CurrentUser() user: any,
+  ): Promise<Customer> {
     this.logger.log(`Finding customer by phone: ${phone}`);
-    return await this.customerService.findByPhone(phone);
+    return await this.customerService.findByPhone(phone, {
+      userId: user.userId,
+      role: user.role,
+    });
   }
 
   @Get(':id')

@@ -269,7 +269,10 @@ export class CustomerService {
   /**
    * 根据邮箱查找客户
    */
-  async findByEmail(email: string): Promise<Customer> {
+  async findByEmail(
+    email: string,
+    currentUser?: { userId: string; role: string },
+  ): Promise<Customer> {
     this.logger.log(`Finding customer with email: ${email}`);
 
     try {
@@ -285,8 +288,18 @@ export class CustomerService {
         throw new NotFoundException('客户不存在');
       }
 
+      const customer = customers[0];
+
+      // 所有权访问控制：非超级管理员仅能访问自己创建的客户
+      if (currentUser && currentUser.role !== 'super_admin') {
+        if (customer.createdBy && customer.createdBy !== currentUser.userId) {
+          this.logger.warn(`Customer not found with email: ${email}`);
+          throw new NotFoundException('客户不存在');
+        }
+      }
+
       this.logger.log(`Customer found with email: ${email}`);
-      return customers[0];
+      return customer;
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw error;
@@ -302,7 +315,10 @@ export class CustomerService {
   /**
    * 根据手机号查找客户
    */
-  async findByPhone(phone: string): Promise<Customer> {
+  async findByPhone(
+    phone: string,
+    currentUser?: { userId: string; role: string },
+  ): Promise<Customer> {
     this.logger.log(`Finding customer with phone: ${phone}`);
 
     try {
@@ -318,8 +334,18 @@ export class CustomerService {
         throw new NotFoundException('客户不存在');
       }
 
+      const customer = customers[0];
+
+      // 所有权访问控制：非超级管理员仅能访问自己创建的客户
+      if (currentUser && currentUser.role !== 'super_admin') {
+        if (customer.createdBy && customer.createdBy !== currentUser.userId) {
+          this.logger.warn(`Customer not found with phone: ${phone}`);
+          throw new NotFoundException('客户不存在');
+        }
+      }
+
       this.logger.log(`Customer found with phone: ${phone}`);
-      return customers[0];
+      return customer;
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw error;
