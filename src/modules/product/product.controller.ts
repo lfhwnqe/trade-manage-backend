@@ -22,6 +22,7 @@ import {
   ApiParam,
   ApiQuery,
   ApiConsumes,
+  ApiBody,
 } from '@nestjs/swagger';
 
 import { RolesGuard } from '../../auth/guards/roles.guard';
@@ -81,6 +82,10 @@ export class ProductController {
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: '更新产品' })
   @ApiParam({ name: 'id', description: '产品ID' })
+  // 明确声明请求体以改善 Swagger 展示
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  @ApiBody({ type: UpdateProductDto, description: '可更新字段' })
   update(
     @Param('id') id: string,
     @Body() dto: UpdateProductDto,
