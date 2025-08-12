@@ -10,7 +10,6 @@ import { JwtModule } from '@nestjs/jwt';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
-import { UserModule } from './modules/user/user.module';
 import { FileModule } from './modules/file/file.module';
 import { CustomerModule } from './modules/customer/customer.module';
 import { ProductModule } from './modules/product/product.module';
@@ -42,7 +41,6 @@ import configuration from './config/configuration';
     DatabaseModule,
     SharedModule,
     AuthModule,
-    UserModule,
     FileModule,
     CustomerModule,
     ProductModule,
