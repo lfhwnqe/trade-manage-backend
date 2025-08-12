@@ -125,7 +125,9 @@ export class ProductService {
 
     // 过滤不允许更新的字段（如主键/只读字段）
     const disallowed = new Set(['productId', 'createdAt', 'createdBy']);
-    const allowedKeys = Object.keys(updateDto).filter((k) => !disallowed.has(k));
+    const allowedKeys = Object.keys(updateDto).filter(
+      (k) => !disallowed.has(k),
+    );
 
     if (allowedKeys.length === 0) {
       // 仅更新时间也可视为成功，但便于前端提示，这里抛出参数无更新内容
