@@ -63,4 +63,10 @@ export class Transaction {
 
   @ApiProperty({ description: '完成时间', required: false })
   completedAt?: string;
+
+  @ApiProperty({ description: '客户姓名（姓+名）', required: false })
+  customerName?: string;
+
+  @ApiProperty({ description: '产品名称', required: false })
+  productName?: string;
 }

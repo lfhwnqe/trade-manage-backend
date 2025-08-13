@@ -28,6 +28,8 @@ import { ImportResultDto, ImportErrorDetail } from './dto/import-result.dto';
 export class TransactionService {
   private readonly logger = new Logger(TransactionService.name);
   private readonly tableName: string;
+  private readonly customerTableName: string;
+  private readonly productTableName: string;
 
   constructor(
     private readonly dynamodbService: DynamodbService,
@@ -35,6 +37,12 @@ export class TransactionService {
   ) {
     this.tableName = this.configService.get<string>(
       'database.tables.customerProductTransactions',
+    );
+    this.customerTableName = this.configService.get<string>(
+      'database.tables.customers',
+    );
+    this.productTableName = this.configService.get<string>(
+      'database.tables.products',
     );
   }
 
@@ -83,17 +91,69 @@ export class TransactionService {
     const totalPages = Math.ceil(total / query.limit);
     const start = (query.page - 1) * query.limit;
     const end = start + query.limit;
-    const data = filtered.slice(start, end);
+    const pageItems = filtered.slice(start, end);
+
+    // 补充中文可读名称：客户姓名、产品名称
+    // 为避免逐条查询，这里一次性扫描客户与产品表并构建映射
+    const [allCustomers, allProducts] = await Promise.all([
+      this.dynamodbService.scan(this.customerTableName),
+      this.dynamodbService.scan(this.productTableName),
+    ]);
+
+    const customerMap = new Map<string, any>();
+    for (const c of allCustomers) customerMap.set(c.customerId, c);
+    const productMap = new Map<string, any>();
+    for (const p of allProducts) productMap.set(p.productId, p);
+
+    const data = pageItems.map((t: any) => {
+      const customer = customerMap.get(t.customerId);
+      const product = productMap.get(t.productId);
+      const customerName = customer
+        ? `${customer.lastName || ''}${customer.firstName || ''}`
+        : undefined;
+      const productName = product ? product.productName : undefined;
+      return {
+        ...t,
+        customerName,
+        productName,
+      };
+    });
 
     return { data, total, page: query.page, limit: query.limit, totalPages };
   }
 
   async findOne(transactionId: string): Promise<Transaction> {
-    const item = await this.dynamodbService.get(this.tableName, {
-      transactionId,
-    });
+    // 为兼容不同表键模式，使用扫描+过滤按 transactionId 精确匹配
+    const items = await this.dynamodbService.scan(
+      this.tableName,
+      '#tid = :tid',
+      { ':tid': transactionId },
+      { '#tid': 'transactionId' },
+    );
+
+    const item = items?.[0];
     if (!item) throw new NotFoundException('记录不存在');
-    return item;
+
+    // 详情补充：客户姓名与产品名称
+    const [customer, product] = await Promise.all([
+      item.customerId
+        ? this.dynamodbService.get(this.customerTableName, {
+            customerId: item.customerId,
+          })
+        : Promise.resolve(undefined),
+      item.productId
+        ? this.dynamodbService.get(this.productTableName, {
+            productId: item.productId,
+          })
+        : Promise.resolve(undefined),
+    ]);
+
+    const customerName = customer
+      ? `${customer.lastName || ''}${customer.firstName || ''}`
+      : undefined;
+    const productName = product ? product.productName : undefined;
+
+    return { ...(item as any), customerName, productName } as Transaction;
   }
 
   async update(
