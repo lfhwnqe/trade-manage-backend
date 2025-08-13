@@ -45,7 +45,7 @@ export class TransactionController {
   constructor(private readonly service: TransactionService) {}
 
   @Post()
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.USER)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: '创建交易记录' })
   create(@Body() dto: CreateTransactionDto): Promise<Transaction> {
     return this.service.create(dto);
