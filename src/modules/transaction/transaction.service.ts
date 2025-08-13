@@ -160,7 +160,8 @@ export class TransactionService {
     transactionId: string,
     dto: UpdateTransactionDto,
   ): Promise<Transaction> {
-    await this.findOne(transactionId);
+    // 先获取现有记录以拿到 sort key（createdAt）
+    const existing = await this.findOne(transactionId);
 
     if (dto.transactionId && dto.transactionId !== transactionId) {
       throw new BadRequestException('交易ID与参数不一致');
@@ -173,6 +174,8 @@ export class TransactionService {
     };
 
     Object.keys(dto).forEach((key, i) => {
+      // 不允许更新主键字段
+      if (key === 'transactionId' || key === 'createdAt') return;
       const attr = `#attr${i}`;
       const val = `:val${i}`;
       updateExpression += `, ${attr} = ${val}`;
@@ -182,18 +185,22 @@ export class TransactionService {
 
     const updated = await this.dynamodbService.update(
       this.tableName,
-      { transactionId },
+      { transactionId, createdAt: existing.createdAt },
       updateExpression,
       values,
       names,
     );
 
-    return updated;
+    // 返回详情时补充客户/产品名称，复用 findOne 保持一致
+    return this.findOne(transactionId);
   }
 
   async remove(transactionId: string): Promise<{ message: string }> {
-    await this.findOne(transactionId);
-    await this.dynamodbService.delete(this.tableName, { transactionId });
+    const existing = await this.findOne(transactionId);
+    await this.dynamodbService.delete(this.tableName, {
+      transactionId,
+      createdAt: existing.createdAt,
+    });
     return { message: '删除成功' };
   }
 
