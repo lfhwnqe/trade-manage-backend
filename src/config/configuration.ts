@@ -15,6 +15,7 @@ export default () => ({
   // S3 Configuration
   s3: {
     bucketName: process.env.S3_BUCKET_NAME,
+    importExportBucketName: process.env.S3_IMPORT_EXPORT_BUCKET_NAME,
     region: process.env.S3_REGION || 'ap-southeast-1',
   },
 
