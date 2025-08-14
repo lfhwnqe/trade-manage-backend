@@ -7,14 +7,12 @@ import {
   Param,
   Delete,
   Query,
-  Res,
   UseGuards,
   UseInterceptors,
   UploadedFile,
   BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { Response } from 'express';
 import {
   ApiTags,
   ApiBearerAuth,
@@ -36,13 +34,17 @@ import {
 } from './dto/query-transaction.dto';
 import { ImportResultDto } from './dto/import-result.dto';
 import { Transaction } from './entities/transaction.entity';
+import { ExportService } from '../import-export/export.service';
 
 @ApiTags('Transactions')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(RolesGuard)
 @Controller('transactions')
 export class TransactionController {
-  constructor(private readonly service: TransactionService) {}
+  constructor(
+    private readonly service: TransactionService,
+    private readonly exportService: ExportService,
+  ) {}
 
   @Post()
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
@@ -58,6 +60,32 @@ export class TransactionController {
     @Query() query: QueryTransactionDto,
   ): Promise<TransactionListResponse> {
     return this.service.findAll(query);
+  }
+
+  @Get('export')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  @ApiOperation({ summary: '导出交易记录（返回S3短时效下载URL）' })
+  async export() {
+    const items = await this.service.getAllForExport();
+    const buf = await this.service.generateExcelBuffer(items);
+    const filename = `transactions_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+    const result = await this.exportService.uploadExcelAndGetUrl({
+      buffer: buf,
+      fileName: filename,
+      prefix: 'exports/transactions',
+      expiresInSeconds: 600,
+      metadata: { module: 'transactions' },
+    });
+
+    return {
+      downloadUrl: result.url,
+      expireAt: result.expiresAt.toISOString(),
+      fileName: filename,
+      objectKey: result.key,
+      bucket: result.bucket,
+      size: buf.length,
+    };
   }
 
   @Get(':id')
@@ -87,21 +115,6 @@ export class TransactionController {
     return this.service.remove(id);
   }
 
-  @Get('export')
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
-  @ApiOperation({ summary: '导出交易记录为Excel' })
-  async export(@Res() res: Response) {
-    const items = await this.service.getAllForExport();
-    const buf = await this.service.generateExcelBuffer(items);
-    const filename = `transactions_${new Date().toISOString().split('T')[0]}.xlsx`;
-    res.setHeader(
-      'Content-Type',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    );
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', buf.length);
-    res.send(buf);
-  }
 
   @Post('import')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)

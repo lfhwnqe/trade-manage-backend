@@ -7,14 +7,12 @@ import {
   Param,
   Delete,
   Query,
-  Res,
   UseGuards,
   UseInterceptors,
   UploadedFile,
   BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { Response } from 'express';
 import {
   ApiTags,
   ApiBearerAuth,
@@ -35,13 +33,17 @@ import { QueryProductDto, ProductListResponse } from './dto/query-product.dto';
 import { ImportResultDto } from './dto/import-result.dto';
 import { Product } from './entities/product.entity';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { ExportService } from '../import-export/export.service';
 
 @ApiTags('Products')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(RolesGuard)
 @Controller('products')
 export class ProductController {
-  constructor(private readonly productService: ProductService) {}
+  constructor(
+    private readonly productService: ProductService,
+    private readonly exportService: ExportService,
+  ) {}
 
   @Post()
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
@@ -65,6 +67,35 @@ export class ProductController {
       userId: user.userId,
       role: user.role,
     });
+  }
+
+  @Get('export')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  @ApiOperation({ summary: '导出产品数据（返回S3短时效下载URL）' })
+  async export(@CurrentUser() user: any) {
+    const products = await this.productService.getAllForExport({
+      userId: user.userId,
+      role: user.role,
+    });
+    const buf = await this.productService.generateExcelBuffer(products);
+    const filename = `products_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+    const result = await this.exportService.uploadExcelAndGetUrl({
+      buffer: buf,
+      fileName: filename,
+      prefix: 'exports/products',
+      expiresInSeconds: 600,
+      metadata: { module: 'products', requestedBy: user.userId },
+    });
+
+    return {
+      downloadUrl: result.url,
+      expireAt: result.expiresAt.toISOString(),
+      fileName: filename,
+      objectKey: result.key,
+      bucket: result.bucket,
+      size: buf.length,
+    };
   }
 
   @Get(':id')
@@ -108,24 +139,6 @@ export class ProductController {
     });
   }
 
-  @Get('export')
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
-  @ApiOperation({ summary: '导出产品数据为Excel' })
-  async export(@Res() res: Response, @CurrentUser() user: any) {
-    const products = await this.productService.getAllForExport({
-      userId: user.userId,
-      role: user.role,
-    });
-    const buf = await this.productService.generateExcelBuffer(products);
-    const filename = `products_${new Date().toISOString().split('T')[0]}.xlsx`;
-    res.setHeader(
-      'Content-Type',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    );
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', buf.length);
-    res.send(buf);
-  }
 
   @Post('import')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
