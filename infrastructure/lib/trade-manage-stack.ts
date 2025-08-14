@@ -15,6 +15,7 @@ export interface TradeManageStackProps extends cdk.StackProps {
 
 export class TradeManageStack extends cdk.Stack {
   public readonly s3Bucket: s3.Bucket;
+  public readonly importExportBucket: s3.Bucket;
   public readonly userPool: cognito.UserPool;
   public readonly userPoolClient: cognito.UserPoolClient;
   public readonly usersTable: dynamodb.Table;
@@ -54,6 +55,35 @@ export class TradeManageStack extends cdk.Stack {
         {
           id: 'DeleteIncompleteMultipartUploads',
           abortIncompleteMultipartUploadAfter: cdk.Duration.days(7),
+        },
+      ],
+      removalPolicy: environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+    });
+
+    // S3 Bucket for import/export temporary files
+    this.importExportBucket = new s3.Bucket(this, 'ImportExportBucket', {
+      bucketName: `trade-manage-import-export-${environment}-${this.region}`,
+      // Temporary files: no versioning to avoid keeping stale versions
+      versioned: false,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      cors: [
+        {
+          // Pre-signed URL flow needs GET/PUT/HEAD
+          allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.PUT, s3.HttpMethods.HEAD],
+          allowedOrigins: ['*'], // TODO: restrict to frontend origins when available
+          allowedHeaders: ['*'],
+          exposedHeaders: ['ETag', 'x-amz-request-id'],
+        },
+      ],
+      lifecycleRules: [
+        {
+          id: 'ExpireTemporaryObjects',
+          expiration: cdk.Duration.days(7), // Auto-delete after 7 days
+        },
+        {
+          id: 'AbortIncompleteMultipartUploads',
+          abortIncompleteMultipartUploadAfter: cdk.Duration.days(1),
         },
       ],
       removalPolicy: environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
@@ -335,6 +365,7 @@ export class TradeManageStack extends cdk.Stack {
 
         // AWS S3 Configuration
         S3_BUCKET_NAME: this.s3Bucket.bucketName,
+        S3_IMPORT_EXPORT_BUCKET_NAME: this.importExportBucket.bucketName,
         S3_REGION: this.region,
 
         // AWS Cognito Configuration
@@ -368,6 +399,7 @@ export class TradeManageStack extends cdk.Stack {
 
     // Grant permissions to Lambda
     this.s3Bucket.grantReadWrite(this.apiLambda);
+    this.importExportBucket.grantReadWrite(this.apiLambda);
     this.usersTable.grantReadWriteData(this.apiLambda);
     this.tradesTable.grantReadWriteData(this.apiLambda);
     this.filesTable.grantReadWriteData(this.apiLambda);
@@ -438,6 +470,7 @@ export class TradeManageStack extends cdk.Stack {
       ``,
       `# AWS S3 Configuration`,
       `S3_BUCKET_NAME=${this.s3Bucket.bucketName}`,
+      `S3_IMPORT_EXPORT_BUCKET_NAME=${this.importExportBucket.bucketName}`,
       `S3_REGION=${this.region}`,
       ``,
       `# AWS Cognito Configuration`,
