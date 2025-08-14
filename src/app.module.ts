@@ -17,6 +17,7 @@ import { TransactionModule } from './modules/transaction/transaction.module';
 import { StatsModule } from './modules/stats/stats.module';
 import { DatabaseModule } from './database/database.module';
 import { SharedModule } from './shared/shared.module';
+import { ImportExportModule } from './modules/import-export/import-export.module';
 import { AuthMiddleware } from './auth/middleware/auth.middleware';
 import configuration from './config/configuration';
 
@@ -40,6 +41,7 @@ import configuration from './config/configuration';
     }),
     DatabaseModule,
     SharedModule,
+    ImportExportModule,
     AuthModule,
     FileModule,
     CustomerModule,

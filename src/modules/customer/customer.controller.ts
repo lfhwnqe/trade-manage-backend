@@ -9,7 +9,6 @@ import {
   UseGuards,
   HttpStatus,
   Logger,
-  Res,
   UseInterceptors,
   UploadedFile,
   BadRequestException,
@@ -24,7 +23,6 @@ import {
   ApiConsumes,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { Response } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 import { CustomerService } from './customer.service';
@@ -38,6 +36,7 @@ import { ImportResultDto } from './dto/import-result.dto';
 import { Customer } from './entities/customer.entity';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles, Role } from '../../common/decorators/roles.decorator';
+import { ExportService } from '../import-export/export.service';
 
 @ApiTags('Customers')
 @Controller('customers')
@@ -46,7 +45,10 @@ import { Roles, Role } from '../../common/decorators/roles.decorator';
 export class CustomerController {
   private readonly logger = new Logger(CustomerController.name);
 
-  constructor(private readonly customerService: CustomerService) {}
+  constructor(
+    private readonly customerService: CustomerService,
+    private readonly exportService: ExportService,
+  ) {}
 
   @Post()
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.USER)
@@ -169,6 +171,87 @@ export class CustomerController {
     });
   }
 
+  @Get('export')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.USER)
+  @ApiOperation({ summary: '导出客户数据（返回S3短时效下载URL）' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '生成并上传Excel成功，返回下载URL',
+    schema: {
+      example: {
+        downloadUrl: 'https://s3-presigned-url',
+        expireAt: '2024-08-14T12:00:00.000Z',
+        fileName: 'customers_2024-08-14.xlsx',
+        objectKey: 'exports/customers/uuid-customers_2024-08-14.xlsx',
+        bucket: 'trade-manage-import-export-dev-ap-southeast-1',
+        size: 12345,
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: '导出失败',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: '未授权',
+  })
+  async exportCustomers(@CurrentUser() user: any): Promise<{
+    downloadUrl: string;
+    expireAt: string;
+    fileName: string;
+    objectKey: string;
+    bucket: string;
+    size: number;
+  }> {
+    this.logger.log('Exporting customers to Excel');
+
+    try {
+      // 获取所有客户数据
+      const customers = await this.customerService.getAllCustomersForExport({
+        userId: user.userId,
+        role: user.role,
+      });
+
+      // 生成Excel文件
+      const excelBuffer =
+        await this.customerService.generateExcelBuffer(customers);
+
+      const filename = `customers_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+      // 上传至S3并返回预签名下载URL
+      const result = await this.exportService.uploadExcelAndGetUrl({
+        buffer: excelBuffer,
+        fileName: filename,
+        prefix: `exports/customers`,
+        expiresInSeconds: 600, // 10分钟
+        metadata: {
+          module: 'customers',
+          requestedBy: user.userId,
+        },
+      });
+
+      this.logger.log(
+        `Excel exported to S3: key=${result.key}, bucket=${result.bucket}`,
+      );
+
+      return {
+        downloadUrl: result.url,
+        expireAt: result.expiresAt.toISOString(),
+        fileName: filename,
+        objectKey: result.key,
+        bucket: result.bucket,
+        size: excelBuffer.length,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Failed to export customers: ${error.message}`,
+        error.stack,
+      );
+      throw new BadRequestException(error.message || '导出客户数据失败');
+    }
+  }
+
   @Get(':id')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.USER)
   @ApiOperation({ summary: '根据ID获取客户详情' })
@@ -240,76 +323,6 @@ export class CustomerController {
       userId: user.userId,
       role: user.role,
     });
-  }
-
-  @Get('export')
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.USER)
-  @ApiOperation({ summary: '导出客户数据为Excel文件' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Excel文件导出成功',
-    headers: {
-      'Content-Type': {
-        description:
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      },
-      'Content-Disposition': {
-        description: 'attachment; filename="customers.xlsx"',
-      },
-    },
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: '导出失败',
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: '未授权',
-  })
-  async exportCustomers(
-    @Res() res: Response,
-    @CurrentUser() user: any,
-  ): Promise<void> {
-    this.logger.log('Exporting customers to Excel');
-
-    try {
-      // 获取所有客户数据
-      const customers = await this.customerService.getAllCustomersForExport({
-        userId: user.userId,
-        role: user.role,
-      });
-
-      // 生成Excel文件
-      const excelBuffer =
-        await this.customerService.generateExcelBuffer(customers);
-
-      // 设置响应头
-      const filename = `customers_${new Date().toISOString().split('T')[0]}.xlsx`;
-      res.setHeader(
-        'Content-Type',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      );
-      res.setHeader(
-        'Content-Disposition',
-        `attachment; filename="${filename}"`,
-      );
-      res.setHeader('Content-Length', excelBuffer.length);
-
-      // 发送文件
-      res.send(excelBuffer);
-
-      this.logger.log(`Excel file exported successfully: ${filename}`);
-    } catch (error) {
-      this.logger.error(
-        `Failed to export customers: ${error.message}`,
-        error.stack,
-      );
-      res.status(HttpStatus.BAD_REQUEST).json({
-        statusCode: HttpStatus.BAD_REQUEST,
-        message: error.message || '导出客户数据失败',
-        error: 'Bad Request',
-      });
-    }
   }
 
   @Post('import')
