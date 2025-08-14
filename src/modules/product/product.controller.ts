@@ -139,7 +139,6 @@ export class ProductController {
     });
   }
 
-
   @Post('import')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @UseInterceptors(FileInterceptor('file'))
