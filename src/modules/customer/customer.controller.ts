@@ -37,6 +37,8 @@ import { Customer } from './entities/customer.entity';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles, Role } from '../../common/decorators/roles.decorator';
 import { ExportService } from '../import-export/export.service';
+import { ImportService } from '../import-export/import.service';
+import { TriggerImportDto } from '@/modules/import-export/dto/trigger-import.dto';
 
 @ApiTags('Customers')
 @Controller('customers')
@@ -48,6 +50,7 @@ export class CustomerController {
   constructor(
     private readonly customerService: CustomerService,
     private readonly exportService: ExportService,
+    private readonly importService: ImportService,
   ) {}
 
   @Post()
@@ -363,5 +366,42 @@ export class CustomerController {
       file,
       user.userId,
     );
+  }
+
+  @Post('imports/s3')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.USER)
+  @ApiOperation({ summary: '从S3拉取Excel（key），解析并导入客户数据' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: '导入完成，返回统计结果',
+  })
+  async importCustomersFromS3(
+    @Body() dto: TriggerImportDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    const { buffer, contentType } = await this.importService.getObjectBuffer(
+      dto.key,
+    );
+
+    const inferred = dto.key.toLowerCase().endsWith('.xlsx')
+      ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      : dto.key.toLowerCase().endsWith('.xls')
+        ? 'application/vnd.ms-excel'
+        : undefined;
+
+    const file: Express.Multer.File = {
+      fieldname: 'file',
+      originalname: dto.key.split('/').pop() || 'import.xlsx',
+      encoding: '7bit',
+      mimetype: contentType || inferred || 'application/octet-stream',
+      size: buffer.length,
+      buffer,
+      destination: '',
+      filename: '',
+      path: '',
+      stream: undefined as any,
+    };
+
+    return this.customerService.importCustomersFromExcel(file, userId);
   }
 }
