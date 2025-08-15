@@ -14,6 +14,8 @@ module.exports = {
     extensions: ['.ts', '.js'],
     // 可按需添加 alias 来屏蔽未使用的模块
     alias: {
+      // 路径别名：将 '@/...' 映射到 src 目录，供 webpack 解析
+      '@': path.resolve(__dirname, 'src'),
       // 本项目未使用 microservices/websockets，忽略其解析
       '@nestjs/microservices': false,
       '@nestjs/websockets/socket-module': false,
