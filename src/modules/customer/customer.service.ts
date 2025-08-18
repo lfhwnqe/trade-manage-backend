@@ -819,7 +819,9 @@ export class CustomerService {
           }
           // exceljs 富文本: { richText: [{ text: string, ...}, ...] }
           else if (Array.isArray((value as any).richText)) {
-            value = (value as any).richText.map((t: any) => t.text || '').join('');
+            value = (value as any).richText
+              .map((t: any) => t.text || '')
+              .join('');
           }
           // 公式: { formula: string, result?: any }
           else if ('result' in (value as any)) {
