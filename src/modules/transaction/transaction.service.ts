@@ -206,11 +206,33 @@ export class TransactionService {
 
   async getAllForExport(): Promise<Transaction[]> {
     const items = await this.dynamodbService.scan(this.tableName);
-    items.sort(
+
+    // 为导出补充中文名称，避免 Excel 中只有 ID
+    const [allCustomers, allProducts] = await Promise.all([
+      this.dynamodbService.scan(this.customerTableName),
+      this.dynamodbService.scan(this.productTableName),
+    ]);
+
+    const customerMap = new Map<string, any>();
+    for (const c of allCustomers) customerMap.set(c.customerId, c);
+    const productMap = new Map<string, any>();
+    for (const p of allProducts) productMap.set(p.productId, p);
+
+    const enriched = items.map((t: any) => {
+      const customer = customerMap.get(t.customerId);
+      const product = productMap.get(t.productId);
+      const customerName = customer
+        ? `${customer.lastName || ''}${customer.firstName || ''}`
+        : undefined;
+      const productName = product ? product.productName : undefined;
+      return { ...t, customerName, productName } as Transaction;
+    });
+
+    enriched.sort(
       (a, b) =>
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     );
-    return items;
+    return enriched;
   }
 
   async generateExcelBuffer(transactions: Transaction[]): Promise<Buffer> {
@@ -220,7 +242,9 @@ export class TransactionService {
     sheet.columns = [
       { header: '交易ID', key: 'transactionId', width: 20 },
       { header: '客户ID', key: 'customerId', width: 20 },
+      { header: '客户姓名', key: 'customerName', width: 20 },
       { header: '产品ID', key: 'productId', width: 20 },
+      { header: '产品名称', key: 'productName', width: 20 },
       { header: '交易类型', key: 'transactionType', width: 12 },
       { header: '数量', key: 'quantity', width: 10 },
       { header: '单价', key: 'unitPrice', width: 10 },
