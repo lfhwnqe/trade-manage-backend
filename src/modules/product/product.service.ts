@@ -214,7 +214,7 @@ export class ProductService {
     file: Express.Multer.File,
     createdBy: string,
   ): Promise<ImportResultDto> {
-    if (!file.originalname.endsWith('.xlsx')) {
+    if (!file.originalname.toLowerCase().endsWith('.xlsx')) {
       throw new UnsupportedMediaTypeException('仅支持xlsx格式');
     }
 
@@ -222,24 +222,59 @@ export class ProductService {
     await workbook.xlsx.load(file.buffer as any);
     const worksheet = workbook.worksheets[0];
 
-    const rows: any[] = [];
+    // 动态读取表头，按标题映射，避免列位移
+    const headerRow = worksheet.getRow(1);
+    const headerMap = new Map<string, number>();
+    headerRow.eachCell((cell, colNumber) => {
+      const title = String(cell.value || '').trim();
+      if (title) headerMap.set(title, colNumber);
+    });
+
+    const getText = (title: string, row: Excel.Row) => {
+      const col = headerMap.get(title);
+      if (!col) return '';
+      return row.getCell(col).text?.trim?.() || '';
+    };
+    const getNumber = (title: string, row: Excel.Row) => {
+      const col = headerMap.get(title);
+      if (!col) return undefined as any;
+      const val = row.getCell(col).value as any;
+      if (val === null || val === undefined || val === '') return undefined as any;
+      const n = Number(val);
+      return Number.isFinite(n) ? n : NaN;
+    };
+
+    const rows: { data: Partial<CreateProductDto>; rowNumber: number }[] = [];
     worksheet.eachRow((row, rowNumber) => {
-      if (rowNumber === 1) return;
-      const data = {
-        productName: row.getCell(1).text.trim(),
-        productType: row.getCell(2).text.trim() as ProductType,
-        riskLevel: row.getCell(3).text.trim() as any,
-        minInvestment: Number(row.getCell(4).value),
-        maxInvestment: Number(row.getCell(5).value),
-        expectedReturn: Number(row.getCell(6).value),
-        interestPaymentDate: row.getCell(7).text.trim(),
-        maturityPeriod: Number(row.getCell(8).value),
-        status:
-          (row.getCell(9).text.trim() as ProductStatus) || ProductStatus.ACTIVE,
-        salesStartDate: row.getCell(10).text.trim(),
-        salesEndDate: row.getCell(11).text.trim(),
-        description: row.getCell(12).text.trim(),
-      } as any;
+      if (rowNumber === 1) return; // 跳过表头
+
+      // 跳过全空行
+      const rawVals: any = (row as any).values;
+      const arrVals: any[] = Array.isArray(rawVals) ? rawVals : [];
+      const isEmpty = arrVals
+        .slice(1)
+        .every((v: any) => v === null || v === undefined || String(v).trim() === '');
+      if (isEmpty) return;
+
+      // 依据导出标题
+      const data: any = {
+        productName: getText('产品名称', row),
+        productType: getText('产品类型', row) as ProductType,
+        riskLevel: getText('风险等级', row) as any,
+        minInvestment: getNumber('最低投资金额', row),
+        maxInvestment: getNumber('最高投资金额', row),
+        expectedReturn: getNumber('预期收益率', row),
+        interestPaymentDate: getText('结息日期', row),
+        maturityPeriod: getNumber('产品期限', row),
+        status: (getText('产品状态', row) as ProductStatus) || ProductStatus.ACTIVE,
+        salesStartDate: getText('销售开始日期', row),
+        salesEndDate: getText('销售结束日期', row),
+      };
+
+      // 兼容可能额外的“产品描述”列（若导出没带此列则忽略）
+      const desc = getText('产品描述', row);
+      if (desc) data.description = desc;
+
       rows.push({ data, rowNumber });
     });
 
@@ -247,15 +282,49 @@ export class ProductService {
     const errors: ImportErrorDetail[] = [];
 
     for (const item of rows) {
+      const rowErrors: string[] = [];
+      const d = item.data as any;
+
+      // 基础必填校验
+      if (!d.productName) rowErrors.push('产品名称不能为空');
+      if (!d.productType || !Object.values(ProductType).includes(d.productType)) {
+        rowErrors.push(`产品类型无效，应为: ${Object.values(ProductType).join(', ')}`);
+      }
+      if (!d.riskLevel) {
+        rowErrors.push('风险等级不能为空');
+      }
+      // 数值校验：禁止 NaN
+      const numericFields: Array<[keyof CreateProductDto, string]> = [
+        ['minInvestment', '最低投资金额'],
+        ['maxInvestment', '最高投资金额'],
+        ['expectedReturn', '预期收益率'],
+        ['maturityPeriod', '产品期限'],
+      ];
+      for (const [key, label] of numericFields) {
+        const v = d[key as any];
+        if (v === undefined || v === null || v === '') {
+          rowErrors.push(`${label}不能为空`);
+        } else if (Number.isNaN(v)) {
+          rowErrors.push(`${label}必须是数字`);
+        } else if (typeof v !== 'number') {
+          rowErrors.push(`${label}类型错误`);
+        }
+      }
+
+      if (rowErrors.length > 0) {
+        errors.push({ row: item.rowNumber, error: rowErrors.join('; '), data: d });
+        continue;
+      }
+
       try {
-        await this.create(item.data, createdBy);
+        await this.create(d as CreateProductDto, createdBy);
         successCount++;
-      } catch (e) {
-        errors.push({ row: item.rowNumber, error: e.message, data: item.data });
+      } catch (e: any) {
+        errors.push({ row: item.rowNumber, error: e?.message || '导入失败', data: d });
       }
     }
 
-    const result: ImportResultDto = {
+    return {
       successCount,
       failureCount: errors.length,
       skippedCount: 0,
@@ -263,7 +332,5 @@ export class ProductService {
       errors,
       message: `导入完成：成功 ${successCount} 条，失败 ${errors.length} 条`,
     };
-
-    return result;
   }
 }

@@ -35,6 +35,8 @@ import {
 import { ImportResultDto } from './dto/import-result.dto';
 import { Transaction } from './entities/transaction.entity';
 import { ExportService } from '../import-export/export.service';
+import { ImportService } from '../import-export/import.service';
+import { TriggerImportDto } from '@/modules/import-export/dto/trigger-import.dto';
 
 @ApiTags('Transactions')
 @ApiBearerAuth('JWT-auth')
@@ -44,6 +46,7 @@ export class TransactionController {
   constructor(
     private readonly service: TransactionService,
     private readonly exportService: ExportService,
+    private readonly importService: ImportService,
   ) {}
 
   @Post()
@@ -124,6 +127,36 @@ export class TransactionController {
     @UploadedFile() file: Express.Multer.File,
   ): Promise<ImportResultDto> {
     if (!file) throw new BadRequestException('请选择要上传的Excel文件');
+    return this.service.importFromExcel(file);
+  }
+
+  @Post('imports/s3')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  @ApiOperation({ summary: '从S3拉取Excel（key），解析并导入交易记录' })
+  async importFromS3(@Body() dto: TriggerImportDto): Promise<ImportResultDto> {
+    const { buffer, contentType } = await this.importService.getObjectBuffer(
+      dto.key,
+    );
+
+    const inferred = dto.key.toLowerCase().endsWith('.xlsx')
+      ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      : dto.key.toLowerCase().endsWith('.xls')
+        ? 'application/vnd.ms-excel'
+        : undefined;
+
+    const file: Express.Multer.File = {
+      fieldname: 'file',
+      originalname: dto.key.split('/').pop() || 'import.xlsx',
+      encoding: '7bit',
+      mimetype: contentType || inferred || 'application/octet-stream',
+      size: buffer.length,
+      buffer,
+      destination: '',
+      filename: '',
+      path: '',
+      stream: undefined as any,
+    };
+
     return this.service.importFromExcel(file);
   }
 }

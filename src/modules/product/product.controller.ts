@@ -34,6 +34,8 @@ import { ImportResultDto } from './dto/import-result.dto';
 import { Product } from './entities/product.entity';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ExportService } from '../import-export/export.service';
+import { ImportService } from '../import-export/import.service';
+import { TriggerImportDto } from '@/modules/import-export/dto/trigger-import.dto';
 
 @ApiTags('Products')
 @ApiBearerAuth('JWT-auth')
@@ -43,6 +45,7 @@ export class ProductController {
   constructor(
     private readonly productService: ProductService,
     private readonly exportService: ExportService,
+    private readonly importService: ImportService,
   ) {}
 
   @Post()
@@ -150,5 +153,38 @@ export class ProductController {
   ): Promise<ImportResultDto> {
     if (!file) throw new BadRequestException('请选择要上传的Excel文件');
     return this.productService.importFromExcel(file, user.userId);
+  }
+
+  @Post('imports/s3')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  @ApiOperation({ summary: '从S3拉取Excel（key），解析并导入产品数据' })
+  async importFromS3(
+    @Body() dto: TriggerImportDto,
+    @CurrentUser('userId') userId: string,
+  ): Promise<ImportResultDto> {
+    const { buffer, contentType } = await this.importService.getObjectBuffer(
+      dto.key,
+    );
+
+    const inferred = dto.key.toLowerCase().endsWith('.xlsx')
+      ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      : dto.key.toLowerCase().endsWith('.xls')
+        ? 'application/vnd.ms-excel'
+        : undefined;
+
+    const file: Express.Multer.File = {
+      fieldname: 'file',
+      originalname: dto.key.split('/').pop() || 'import.xlsx',
+      encoding: '7bit',
+      mimetype: contentType || inferred || 'application/octet-stream',
+      size: buffer.length,
+      buffer,
+      destination: '',
+      filename: '',
+      path: '',
+      stream: undefined as any,
+    };
+
+    return this.productService.importFromExcel(file, userId);
   }
 }
