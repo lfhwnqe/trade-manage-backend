@@ -800,22 +800,50 @@ export class CustomerService {
         客户状态: 'status',
       };
 
-      // 获取每个单元格的值
+      // 获取每个单元格的值（兼容超链接/富文本/公式等）
       headers.forEach((header, colIndex) => {
         const fieldName = columnMapping[header];
-        if (fieldName) {
-          const cell = row.getCell(colIndex + 1);
-          let value = cell.value;
+        if (!fieldName) return;
 
-          // 处理日期类型
-          if (fieldName === 'dateOfBirth' && value instanceof Date) {
-            value = value.toISOString().split('T')[0]; // 转为 YYYY-MM-DD 格式
-          } else if (value !== null && value !== undefined) {
+        const cell = row.getCell(colIndex + 1);
+        let value: any = cell?.value as any;
+
+        // 统一提取为字符串
+        if (value instanceof Date) {
+          // 日期单元格
+          value = value.toISOString();
+        } else if (value && typeof value === 'object') {
+          // exceljs 超链接: { text: string, hyperlink: string }
+          if (typeof (value as any).text === 'string') {
+            value = (value as any).text;
+          }
+          // exceljs 富文本: { richText: [{ text: string, ...}, ...] }
+          else if (Array.isArray((value as any).richText)) {
+            value = (value as any).richText.map((t: any) => t.text || '').join('');
+          }
+          // 公式: { formula: string, result?: any }
+          else if ('result' in (value as any)) {
+            value = (value as any).result;
+          }
+          // 其他对象，尽量取字符串化的安全路径（避免 [object Object]）
+          else {
+            value = '';
+          }
+        }
+
+        if (value !== null && value !== undefined) {
+          // 出生日期规范化为 YYYY-MM-DD
+          if (fieldName === 'dateOfBirth') {
+            // 如果是 ISO 或日期字符串，尽量裁剪成 YYYY-MM-DD
+            const iso = value.toString();
+            const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            value = m ? `${m[1]}-${m[2]}-${m[3]}` : iso.trim();
+          } else {
             value = value.toString().trim();
           }
-
-          rowData[fieldName] = value;
         }
+
+        rowData[fieldName] = value;
       });
 
       // 验证必填字段
