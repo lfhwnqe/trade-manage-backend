@@ -717,22 +717,29 @@ export class CustomerService {
             kind: 'failure',
             detail: {
               row: data.rowNumber,
-              error: (error && (error.message || error.toString())) || '导入失败',
+              error:
+                (error && (error.message || error.toString())) || '导入失败',
               data,
             },
           };
         }
       };
 
-      const results = await this.mapWithConcurrency(validData, Math.max(1, concurrency), taskMapper);
+      const results = await this.mapWithConcurrency(
+        validData,
+        Math.max(1, concurrency),
+        taskMapper,
+      );
 
       // 统计
       const successCount = results.filter((r) => r.kind === 'success').length;
       const skippedItems = results.filter(
-        (r): r is Extract<ItemResult, { kind: 'skipped' }> => r.kind === 'skipped',
+        (r): r is Extract<ItemResult, { kind: 'skipped' }> =>
+          r.kind === 'skipped',
       );
       const failureItems = results.filter(
-        (r): r is Extract<ItemResult, { kind: 'failure' }> => r.kind === 'failure',
+        (r): r is Extract<ItemResult, { kind: 'failure' }> =>
+          r.kind === 'failure',
       );
       const skippedCount = skippedItems.length;
       let failureCount = errors.length + failureItems.length;
@@ -858,7 +865,7 @@ export class CustomerService {
             results[current] = await mapper(items[current]);
           } catch (e) {
             // 将异常包裹为 mapper 内部应返回的形式交由上层统计
-            results[current] = (e as any) as R;
+            results[current] = e as any as R;
           }
         }
       },
