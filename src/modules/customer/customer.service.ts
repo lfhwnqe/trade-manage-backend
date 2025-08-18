@@ -663,33 +663,41 @@ export class CustomerService {
       // 验证Excel数据
       const { validData, errors } = await this.validateExcelData(worksheet);
 
-      // 导入统计
-      let successCount = 0;
-      let failureCount = errors.length;
-      let skippedCount = 0;
-      const importErrors: ImportErrorDetail[] = [];
+      // 并发导入，有上限控制
+      const concurrency = parseInt(process.env.IMPORT_CONCURRENCY || '4', 10);
+      type ItemResult =
+        | { kind: 'success' }
+        | { kind: 'skipped'; detail: ImportErrorDetail }
+        | { kind: 'failure'; detail: ImportErrorDetail };
 
-      // 批量导入有效数据
-      for (const data of validData) {
+      const taskMapper = async (data: any): Promise<ItemResult> => {
         try {
           // 检查邮箱和手机号是否已存在
-          const emailExists = await this.isEmailExists(data.email);
-          const phoneExists = await this.isPhoneExists(data.phone);
+          const [emailExists, phoneExists] = await Promise.all([
+            this.isEmailExists(data.email),
+            this.isPhoneExists(data.phone),
+          ]);
 
           if (emailExists || phoneExists) {
-            skippedCount++;
-            importErrors.push({
-              row: data.rowNumber,
-              error: emailExists ? '邮箱已存在' : '手机号已存在',
-              data,
-            });
-            continue;
+            return {
+              kind: 'skipped',
+              detail: {
+                row: data.rowNumber,
+                error: emailExists ? '邮箱已存在' : '手机号已存在',
+                data,
+              },
+            };
           }
 
-          // 创建新客户
+          // 生成用户名与默认密码（用于创建登录账号）
+          const username = this.buildUsernameFromPhone(data.phone);
+          const password = this.getDefaultCustomerPassword();
+
           await this.create(
             {
               email: data.email,
+              username,
+              password,
               phone: data.phone,
               firstName: data.firstName,
               lastName: data.lastName,
@@ -703,16 +711,35 @@ export class CustomerService {
             createdBy,
           );
 
-          successCount++;
+          return { kind: 'success' };
         } catch (error) {
-          failureCount++;
-          importErrors.push({
-            row: data.rowNumber,
-            error: error.message || '导入失败',
-            data,
-          });
+          return {
+            kind: 'failure',
+            detail: {
+              row: data.rowNumber,
+              error: (error && (error.message || error.toString())) || '导入失败',
+              data,
+            },
+          };
         }
-      }
+      };
+
+      const results = await this.mapWithConcurrency(validData, Math.max(1, concurrency), taskMapper);
+
+      // 统计
+      const successCount = results.filter((r) => r.kind === 'success').length;
+      const skippedItems = results.filter(
+        (r): r is Extract<ItemResult, { kind: 'skipped' }> => r.kind === 'skipped',
+      );
+      const failureItems = results.filter(
+        (r): r is Extract<ItemResult, { kind: 'failure' }> => r.kind === 'failure',
+      );
+      const skippedCount = skippedItems.length;
+      let failureCount = errors.length + failureItems.length;
+      const importErrors: ImportErrorDetail[] = [
+        ...skippedItems.map((i) => i.detail),
+        ...failureItems.map((i) => i.detail),
+      ];
 
       // 合并所有错误
       const allErrors = [...errors, ...importErrors];
@@ -737,6 +764,107 @@ export class CustomerService {
       );
       throw new BadRequestException(`导入客户数据失败: ${error.message}`);
     }
+  }
+
+  /**
+   * 获取默认客户密码（优先环境变量，不符合策略则回退安全默认值）
+   */
+  private getDefaultCustomerPassword(): string {
+    const envPassword =
+      this.configService.get<string>('DEFAULT_CUSTOMER_PASSWORD') ||
+      process.env.DEFAULT_CUSTOMER_PASSWORD ||
+      this.configService.get<string>('AUTH_DEFAULT_CUSTOMER_PASSWORD') ||
+      process.env.AUTH_DEFAULT_CUSTOMER_PASSWORD;
+
+    // Cognito 常见密码策略：>=8，含大写/小写/数字/特殊字符
+    const meetsPolicy = (pwd: string) =>
+      typeof pwd === 'string' &&
+      pwd.length >= 8 &&
+      /[A-Z]/.test(pwd) &&
+      /[a-z]/.test(pwd) &&
+      /\d/.test(pwd) &&
+      /[@$!%*?&.#_\-]/.test(pwd);
+
+    if (envPassword && meetsPolicy(envPassword)) {
+      return envPassword;
+    }
+
+    // 安全默认值（符合 Cognito 复杂度要求）
+    const fallback = 'Tmp#Customer123';
+    if (!meetsPolicy(envPassword || '')) {
+      this.logger.warn(
+        'Environment default password is missing or too weak, using fallback default password',
+      );
+    }
+    return fallback;
+  }
+
+  /**
+   * 基于邮箱生成合法、非邮箱格式的用户名，尽量保证唯一
+   */
+  private async generateCustomerUsername(email: string): Promise<string> {
+    const prefix = (email || '').split('@')[0] || 'user';
+    const safe = prefix.replace(/[^a-zA-Z0-9_\-]/g, '_').slice(0, 16);
+
+    // 生成带随机后缀的用户名，避免与已有用户冲突，长度控制 <= 30
+    const base = `cust_${safe}`; // 最长 5 + 1 + 16 = 22
+
+    for (let i = 0; i < 5; i++) {
+      const suffix = Math.random().toString(36).slice(2, 8); // 6位
+      const candidate = `${base}_${suffix}`; // 最长 22 + 1 + 6 = 29
+
+      // 检查是否已存在
+      try {
+        const existing = await this.dynamodbService.get('users', {
+          userId: candidate,
+        });
+        if (!existing) return candidate;
+      } catch (_) {
+        // 如检查失败，直接返回候选，交由下游冲突处理
+        return candidate;
+      }
+    }
+
+    // 退化处理：仍返回一个候选（极低概率冲突，由下游处理）
+    return `${base}_${Date.now().toString().slice(-6)}`;
+  }
+
+  /**
+   * 使用电话号码构建用户名：去除非数字字符，保证非空
+   */
+  private buildUsernameFromPhone(phone: string): string {
+    const digits = (phone || '').replace(/\D/g, '');
+    if (digits.length > 0) return digits;
+    // 极端情况下仍为空，退化到时间戳用户名
+    return `cust_${Date.now().toString().slice(-10)}`;
+  }
+
+  /**
+   * 简单的并发控制映射器
+   */
+  private async mapWithConcurrency<T, R>(
+    items: T[],
+    limit: number,
+    mapper: (item: T) => Promise<R>,
+  ): Promise<R[]> {
+    const results: R[] = new Array(items.length);
+    let index = 0;
+    const workers = Array.from({ length: Math.min(limit, items.length) }).map(
+      async () => {
+        while (true) {
+          const current = index++;
+          if (current >= items.length) break;
+          try {
+            results[current] = await mapper(items[current]);
+          } catch (e) {
+            // 将异常包裹为 mapper 内部应返回的形式交由上层统计
+            results[current] = (e as any) as R;
+          }
+        }
+      },
+    );
+    await Promise.all(workers);
+    return results;
   }
 
   /**
