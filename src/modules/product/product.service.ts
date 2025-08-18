@@ -239,7 +239,8 @@ export class ProductService {
       const col = headerMap.get(title);
       if (!col) return undefined as any;
       const val = row.getCell(col).value as any;
-      if (val === null || val === undefined || val === '') return undefined as any;
+      if (val === null || val === undefined || val === '')
+        return undefined as any;
       const n = Number(val);
       return Number.isFinite(n) ? n : NaN;
     };
@@ -253,7 +254,9 @@ export class ProductService {
       const arrVals: any[] = Array.isArray(rawVals) ? rawVals : [];
       const isEmpty = arrVals
         .slice(1)
-        .every((v: any) => v === null || v === undefined || String(v).trim() === '');
+        .every(
+          (v: any) => v === null || v === undefined || String(v).trim() === '',
+        );
       if (isEmpty) return;
 
       // 依据导出标题
@@ -266,7 +269,8 @@ export class ProductService {
         expectedReturn: getNumber('预期收益率', row),
         interestPaymentDate: getText('结息日期', row),
         maturityPeriod: getNumber('产品期限', row),
-        status: (getText('产品状态', row) as ProductStatus) || ProductStatus.ACTIVE,
+        status:
+          (getText('产品状态', row) as ProductStatus) || ProductStatus.ACTIVE,
         salesStartDate: getText('销售开始日期', row),
         salesEndDate: getText('销售结束日期', row),
       };
@@ -287,8 +291,13 @@ export class ProductService {
 
       // 基础必填校验
       if (!d.productName) rowErrors.push('产品名称不能为空');
-      if (!d.productType || !Object.values(ProductType).includes(d.productType)) {
-        rowErrors.push(`产品类型无效，应为: ${Object.values(ProductType).join(', ')}`);
+      if (
+        !d.productType ||
+        !Object.values(ProductType).includes(d.productType)
+      ) {
+        rowErrors.push(
+          `产品类型无效，应为: ${Object.values(ProductType).join(', ')}`,
+        );
       }
       if (!d.riskLevel) {
         rowErrors.push('风险等级不能为空');
@@ -312,7 +321,11 @@ export class ProductService {
       }
 
       if (rowErrors.length > 0) {
-        errors.push({ row: item.rowNumber, error: rowErrors.join('; '), data: d });
+        errors.push({
+          row: item.rowNumber,
+          error: rowErrors.join('; '),
+          data: d,
+        });
         continue;
       }
 
@@ -320,7 +333,11 @@ export class ProductService {
         await this.create(d as CreateProductDto, createdBy);
         successCount++;
       } catch (e: any) {
-        errors.push({ row: item.rowNumber, error: e?.message || '导入失败', data: d });
+        errors.push({
+          row: item.rowNumber,
+          error: e?.message || '导入失败',
+          data: d,
+        });
       }
     }
 

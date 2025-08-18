@@ -266,7 +266,8 @@ export class TransactionService {
       const col = headerMap.get(title);
       if (!col) return undefined as any;
       const val = row.getCell(col).value as any;
-      if (val === null || val === undefined || val === '') return undefined as any;
+      if (val === null || val === undefined || val === '')
+        return undefined as any;
       const n = Number(val);
       return Number.isFinite(n) ? n : NaN;
     };
@@ -278,7 +279,9 @@ export class TransactionService {
       const arrVals: any[] = Array.isArray(rawVals) ? rawVals : [];
       const isEmpty = arrVals
         .slice(1)
-        .every((v: any) => v === null || v === undefined || String(v).trim() === '');
+        .every(
+          (v: any) => v === null || v === undefined || String(v).trim() === '',
+        );
       if (isEmpty) return;
 
       const data = {
@@ -327,7 +330,11 @@ export class TransactionService {
       }
 
       if (rowErrors.length > 0) {
-        errors.push({ row: item.rowNumber, error: rowErrors.join('; '), data: d });
+        errors.push({
+          row: item.rowNumber,
+          error: rowErrors.join('; '),
+          data: d,
+        });
         continue;
       }
 
@@ -335,7 +342,11 @@ export class TransactionService {
         await this.create(d);
         successCount++;
       } catch (e: any) {
-        errors.push({ row: item.rowNumber, error: e?.message || '导入失败', data: d });
+        errors.push({
+          row: item.rowNumber,
+          error: e?.message || '导入失败',
+          data: d,
+        });
       }
     }
 
