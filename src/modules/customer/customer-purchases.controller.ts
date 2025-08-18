@@ -1,10 +1,19 @@
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { RolesGuard } from '@/auth/guards/roles.guard';
 import { Roles, Role } from '@/common/decorators/roles.decorator';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { CustomerPurchasesService } from './customer-purchases.service';
-import { QueryCustomerPurchasesDto, CustomerPurchaseListResponse } from './dto/query-customer-purchases.dto';
+import {
+  QueryCustomerPurchasesDto,
+  CustomerPurchaseListResponse,
+} from './dto/query-customer-purchases.dto';
 
 @ApiTags('Customer Purchases')
 @ApiBearerAuth('JWT-auth')

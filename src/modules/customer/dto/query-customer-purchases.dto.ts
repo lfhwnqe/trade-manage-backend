@@ -44,4 +44,3 @@ export class CustomerPurchaseListResponse {
   @ApiProperty({ description: '总页数' })
   totalPages: number;
 }
-

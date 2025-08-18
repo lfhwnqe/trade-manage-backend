@@ -1,8 +1,15 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DynamodbService } from '@/database/dynamodb.service';
 import { CustomerService } from './customer.service';
-import { QueryCustomerPurchasesDto, CustomerPurchaseListResponse } from './dto/query-customer-purchases.dto';
+import {
+  QueryCustomerPurchasesDto,
+  CustomerPurchaseListResponse,
+} from './dto/query-customer-purchases.dto';
 
 @Injectable()
 export class CustomerPurchasesService {
@@ -15,18 +22,25 @@ export class CustomerPurchasesService {
     private readonly config: ConfigService,
     private readonly customerService: CustomerService,
   ) {
-    this.txnTable = this.config.get<string>('database.tables.customerProductTransactions');
+    this.txnTable = this.config.get<string>(
+      'database.tables.customerProductTransactions',
+    );
     this.productTable = this.config.get<string>('database.tables.products');
     this.customerTable = this.config.get<string>('database.tables.customers');
   }
 
-  private async getAllowedCustomerIds(currentUser: { userId: string; role: string }): Promise<Set<string> | undefined> {
+  private async getAllowedCustomerIds(currentUser: {
+    userId: string;
+    role: string;
+  }): Promise<Set<string> | undefined> {
     // super admin: no restriction
     if (currentUser?.role === 'super_admin') return undefined;
 
     // customer: only own customerId (from users table)
     if (currentUser?.role === 'customer') {
-      const userRecord = await this.dynamodb.get('users', { userId: currentUser.userId });
+      const userRecord = await this.dynamodb.get('users', {
+        userId: currentUser.userId,
+      });
       const cid = userRecord?.customerId;
       if (!cid) throw new BadRequestException('当前客户账号未绑定客户ID');
       return new Set([cid]);
@@ -53,10 +67,14 @@ export class CustomerPurchasesService {
     if (allowed) {
       items = items.filter((i) => allowed.has(i.customerId));
     }
-    if (query.productId) items = items.filter((i) => i.productId === query.productId);
+    if (query.productId)
+      items = items.filter((i) => i.productId === query.productId);
 
     // 排序：按创建时间倒序
-    items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    items.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
 
     // 分页
     const total = items.length;
@@ -89,7 +107,9 @@ export class CustomerPurchasesService {
     if (allowed) {
       // 非超级管理员需验证至少有一条允许范围内的购买记录
       const txns = (await this.dynamodb.scan(this.txnTable)) as any[];
-      const match = txns.find((t) => allowed.has(t.customerId) && t.productId === productId);
+      const match = txns.find(
+        (t) => allowed.has(t.customerId) && t.productId === productId,
+      );
       if (!match) throw new NotFoundException('未找到相关购买记录');
     }
 
