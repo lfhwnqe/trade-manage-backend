@@ -83,17 +83,26 @@ export class CustomerPurchasesService {
     const end = start + query.limit;
     const pageItems = items.slice(start, end);
 
-    // 补充产品名称
-    const [allProducts] = await Promise.all([
+    // 补充客户/产品名称，便于前端阅读
+    const [allProducts, allCustomers] = await Promise.all([
       this.dynamodb.scan(this.productTable),
+      this.dynamodb.scan(this.customerTable),
     ]);
+
     const productMap = new Map<string, any>();
     for (const p of allProducts) productMap.set(p.productId, p);
 
-    const data = pageItems.map((t) => ({
-      ...t,
-      productName: productMap.get(t.productId)?.productName,
-    }));
+    const customerMap = new Map<string, any>();
+    for (const c of allCustomers) customerMap.set(c.customerId, c);
+
+    const data = pageItems.map((t) => {
+      const productName = productMap.get(t.productId)?.productName;
+      const c = customerMap.get(t.customerId);
+      const customerName = c
+        ? `${c.lastName || ''}${c.firstName || ''}`
+        : undefined;
+      return { ...t, productName, customerName };
+    });
 
     return { data, total, page: query.page, limit: query.limit, totalPages };
   }
