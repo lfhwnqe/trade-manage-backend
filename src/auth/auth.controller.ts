@@ -84,7 +84,10 @@ export class AuthController {
   @ApiOperation({ summary: 'Change password (Cognito)' })
   @ApiResponse({ status: 200, description: 'Password changed successfully' })
   @ApiResponse({ status: 400, description: 'Invalid new password' })
-  @ApiResponse({ status: 401, description: 'Unauthorized or wrong old password' })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized or wrong old password',
+  })
   async changePassword(
     @CurrentUser('userId') userId: string,
     @Body() dto: ChangePasswordDto,
