@@ -14,6 +14,7 @@ import { DynamodbService } from '../database/dynamodb.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { VerifyRegistrationDto } from './dto/verify-registration.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -279,6 +280,58 @@ export class AuthService {
 
     const { password, ...profile } = user;
     return profile;
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const { oldPassword, newPassword } = dto;
+
+    // 读取用户，校验旧密码
+    const user = await this.dynamodbService.get('users', { userId });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const match = await bcrypt.compare(oldPassword, user.password);
+    if (!match) {
+      throw new UnauthorizedException('旧密码不正确');
+    }
+
+    // 使用 Cognito 管理接口设置新密码（遵循密码策略校验）
+    const cognitoUsername = user.cognitoUsername || user.username || userId;
+    try {
+      await this.cognitoService.setUserPassword(
+        cognitoUsername,
+        newPassword,
+        true,
+      );
+    } catch (error) {
+      // 将 Cognito 密码策略错误转为中文提示
+      const name = (error && (error.name || (error as any).__type)) || '';
+      if (name === 'InvalidPasswordException') {
+        throw new BadRequestException(
+          this.translateCognitoPasswordError(error),
+        );
+      }
+      if (name === 'UserNotFoundException') {
+        throw new BadRequestException('Cognito 中未找到该用户');
+      }
+      throw new BadRequestException('修改密码失败');
+    }
+
+    // 同步更新本地 DynamoDB 的密码哈希
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await this.dynamodbService.update(
+      'users',
+      { userId },
+      'SET #pwd = :pwd, updatedAt = :updatedAt',
+      {
+        ':pwd': hashedPassword,
+        ':updatedAt': new Date().toISOString(),
+      },
+      { '#pwd': 'password' },
+    );
+
+    return { message: '密码修改成功' };
   }
 
   async verifyRegistration(verifyRegistrationDto: VerifyRegistrationDto) {
