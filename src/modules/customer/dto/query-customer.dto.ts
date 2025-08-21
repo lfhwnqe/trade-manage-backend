@@ -32,7 +32,7 @@ export class QueryCustomerDto {
   @IsOptional()
   @Type(() => Number)
   @Min(1, { message: '每页数量必须大于0' })
-  @Max(100, { message: '每页数量不能超过100' })
+  @Max(500, { message: '每页数量不能超过500' })
   limit?: number = 10;
 
   @ApiProperty({

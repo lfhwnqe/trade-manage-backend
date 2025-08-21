@@ -15,12 +15,12 @@ export class QueryProductDto {
     example: 10,
     required: false,
     minimum: 1,
-    maximum: 100,
+    maximum: 500,
   })
   @IsOptional()
   @Type(() => Number)
   @Min(1)
-  @Max(100)
+  @Max(500)
   limit?: number = 10;
 
   @ApiProperty({ description: '搜索关键词(产品名称)', required: false })

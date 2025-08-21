@@ -47,6 +47,23 @@ export class TransactionService {
   }
 
   async create(dto: CreateTransactionDto): Promise<Transaction> {
+    // 强校验：客户与产品必须存在
+    const [customer, product] = await Promise.all([
+      this.dynamodbService.get(this.customerTableName, {
+        customerId: dto.customerId,
+      }),
+      this.dynamodbService.get(this.productTableName, {
+        productId: dto.productId,
+      }),
+    ]);
+
+    if (!customer) {
+      throw new NotFoundException('客户不存在');
+    }
+    if (!product) {
+      throw new NotFoundException('产品不存在');
+    }
+
     const now = new Date().toISOString();
     const transactionId = `txn_${uuidv4()}`;
 
@@ -165,6 +182,36 @@ export class TransactionService {
 
     if (dto.transactionId && dto.transactionId !== transactionId) {
       throw new BadRequestException('交易ID与参数不一致');
+    }
+
+    // 若提供了 customerId 或 productId，则进行存在性校验
+    const checks: Promise<any>[] = [];
+    if (dto.customerId) {
+      checks.push(
+        this.dynamodbService.get(this.customerTableName, {
+          customerId: dto.customerId,
+        }),
+      );
+    } else {
+      checks.push(Promise.resolve(undefined));
+    }
+
+    if (dto.productId) {
+      checks.push(
+        this.dynamodbService.get(this.productTableName, {
+          productId: dto.productId,
+        }),
+      );
+    } else {
+      checks.push(Promise.resolve(undefined));
+    }
+
+    const [customerMaybe, productMaybe] = await Promise.all(checks);
+    if (dto.customerId && !customerMaybe) {
+      throw new NotFoundException('客户不存在');
+    }
+    if (dto.productId && !productMaybe) {
+      throw new NotFoundException('产品不存在');
     }
 
     let updateExpression = 'SET #updatedAt = :updatedAt';
