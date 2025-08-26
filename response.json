@@ -1,1 +1,0 @@
-{"errorType":"TypeError","errorMessage":"(0 , s.default) is not a function","trace":["TypeError: (0 , s.default) is not a function","    at /var/task/lambda.js:1:172264","    at async e.handler (/var/task/lambda.js:1:172126)"]}
