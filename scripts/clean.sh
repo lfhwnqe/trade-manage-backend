@@ -7,10 +7,14 @@ set -e
 
 echo "🧹 Cleaning build artifacts..."
 
-# Remove main build output
+# Remove main build outputs
 if [ -d "dist" ]; then
     echo "  Removing dist/ directory..."
     rm -rf dist
+fi
+if [ -d "backend/build" ]; then
+    echo "  Removing backend/build/ directory..."
+    rm -rf backend/build
 fi
 
 # Remove lambda package

@@ -18,15 +18,17 @@ if ! command -v node >/dev/null 2>&1; then
   fi
 fi
 
-# Run Prettier without relying on yarn/npm in PATH
-if [ -x "./node_modules/.bin/prettier" ]; then
-  ./node_modules/.bin/prettier --write "src/**/*.ts" "test/**/*.ts"
+# Run formatting via workspaces when available; fallback to direct prettier
+if command -v yarn >/dev/null 2>&1; then
+  # Use workspace scripts so each package formats its own files
+  yarn format || true
+elif command -v npm >/dev/null 2>&1; then
+  npm run format || true
+elif [ -x "./node_modules/.bin/prettier" ]; then
+  # Fallback: try common globs at repo root; ignore unmatched patterns
+  ./node_modules/.bin/prettier --no-error-on-unmatched-pattern --write \
+    "src/**/*.ts" "test/**/*.ts" \
+    "backend/src/**/*.ts" "backend/test/**/*.ts" || true
 else
-  if command -v yarn >/dev/null 2>&1; then
-    yarn format || true
-  elif command -v npm >/dev/null 2>&1; then
-    npm run format || true
-  else
-    echo "[husky] prettier not found; skipping format"
-  fi
+  echo "[husky] prettier not found; skipping format"
 fi
