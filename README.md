@@ -60,11 +60,16 @@ chmod +x scripts/setup.sh
 ### 2. Configuration
 
 ```bash
-# Copy environment template
+# Copy environment template (root)
 cp .env.example .env
 
-# Update .env with your AWS credentials and configuration
-# Update .env.development and .env.production as needed
+# Backend service loads env from backend/.env or backend/.env.local
+# If you keep the template at repo root, sync it to backend/.env for local dev
+mkdir -p backend
+cp .env backend/.env
+
+# Update env values as needed (do not commit secrets)
+# Optional: also maintain backend/.env.development and backend/.env.production
 ```
 
 ### 3. AWS Setup

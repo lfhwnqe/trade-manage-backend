@@ -38,10 +38,16 @@ lerna-debug.log*
 !.vscode/extensions.json
 
 # Environment variables
+# Root-level templates (do not commit real secrets)
 .env
 .env.local
 .env.development
 .env.production
+# Ensure backend local env files are ignored
+backend/.env
+backend/.env.local
+backend/.env.development
+backend/.env.production
 
 # CDK
 infrastructure/cdk.out/
