@@ -5,6 +5,8 @@ import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
@@ -350,6 +352,7 @@ export class TradeManageStack extends cdk.Stack {
       functionName: `trade-manage-api-${environment}`,
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'lambda.handler',
+      architecture: lambda.Architecture.ARM_64,
       code: lambda.Code.fromAsset(path.join(__dirname, '../../lambda-package')),
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
@@ -458,6 +461,50 @@ export class TradeManageStack extends cdk.Stack {
       anyMethod: true,
     });
 
+    // EventBridge rule to ping health endpoint every 5 minutes
+    const healthCheckRule = new events.Rule(this, 'HealthCheckScheduleRule', {
+      schedule: events.Schedule.rate(cdk.Duration.minutes(5)),
+      description: 'Invoke API Gateway health endpoint every 5 minutes',
+    });
+
+    healthCheckRule.addTarget(
+      new targets.ApiGateway(this.api, {
+        stage: environment,
+        path: '/api/v1/health',
+        method: 'GET',
+      }),
+    );
+
+    // (Removed) Extra direct Lambda warm-up rule per user request
+
+    // EventBridge API Destination to ping Amplify domain directly
+    const amplifyConnection = new events.Connection(this, 'AmplifyConnection', {
+      // Public endpoint: use dummy API key header to satisfy Connection requirement
+      authorization: events.Authorization.apiKey(
+        'x-api-key',
+        cdk.SecretValue.unsafePlainText('noop'),
+      ),
+      description: 'Connection for public Amplify endpoint (no real auth)',
+    });
+
+    const amplifyApiDestination = new events.ApiDestination(
+      this,
+      'AmplifyApiDestination',
+      {
+        connection: amplifyConnection,
+        endpoint: 'https://trade.maomaocong.com/',
+        httpMethod: events.HttpMethod.GET,
+        rateLimitPerSecond: 1,
+        description: 'Ping Amplify app root URL',
+      },
+    );
+
+    const amplifyKeepAliveRule = new events.Rule(this, 'AmplifyKeepAliveScheduleRule', {
+      schedule: events.Schedule.rate(cdk.Duration.minutes(5)),
+      description: 'Ping Amplify domain to keep it active',
+    });
+    amplifyKeepAliveRule.addTarget(new targets.ApiDestination(amplifyApiDestination));
+
     // Create .env file content
     const envContent = [
       `# Application Configuration`,
@@ -512,6 +559,7 @@ export class TradeManageStack extends cdk.Stack {
       value: this.api.url,
       description: 'API Gateway endpoint URL',
     });
+
 
     // Output .env file content with clear instructions
     new cdk.CfnOutput(this, 'EnvFileContent', {
